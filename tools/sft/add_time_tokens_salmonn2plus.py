@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-SALMONN2+ 모델에 VTG-LLM time token (<t0>~<t9>, <tdot>)을 추가.
-- tokenizer에 special token 추가
+Add VTG-LLM time tokens (<t0>~<t9>, <tdot>) to a video-SALMONN 2+ model.
+- add the special tokens to the tokenizer
 - model embedding/lm_head resize
-- 저장
+- save the result
 """
 import argparse
 import os
@@ -45,14 +45,14 @@ def main():
 
     old_embed_size = model.get_input_embeddings().weight.shape[0]
     new_vocab_size = len(tokenizer)
-    # 원본 embedding이 vocab보다 클 수 있음 (padding). 줄이지 않도록 max 사용
+    # The original embedding may be larger than the vocab (padding); never shrink it.
     target_size = max(old_embed_size, new_vocab_size)
     model.resize_token_embeddings(target_size)
     new_size = model.get_input_embeddings().weight.shape[0]
     print(f"  Embedding: {old_embed_size} -> {new_size} (vocab={new_vocab_size})")
 
-    # time token embedding 초기화 (VTG-LLM 방식)
-    # <t0>~<t9> → '0'~'9' 토큰 임베딩, <tdot> → '.' 토큰 임베딩
+    # Initialize time-token embeddings (VTG-LLM style):
+    # <t0>~<t9> <- embeddings of '0'~'9', <tdot> <- embedding of '.'
     init_map = {f"<t{i}>": str(i) for i in range(10)}
     init_map["<tdot>"] = "."
 
@@ -77,9 +77,9 @@ def main():
                     out_embed[new_id] = out_embed[orig_id].clone()
                 print(f"  {new_tok} (id={new_id}) <- '{orig_char}' (id={orig_id})")
 
-    # 타임토큰 ID 구간을 config에 저장해, 모델 로드 시 rope2d의
-    # get_rope_index_25에 바로 전달할 수 있도록 한다.
-    # (tokenizer 없이도 config만으로 RoPE 계산이 가능하게 됨)
+    # Store the time-token id range in the config so that rope2d.get_rope_index_25
+    # can use it directly when the model is loaded
+    # (RoPE positions can then be computed from the config alone, without the tokenizer).
     t0_id = tokenizer.convert_tokens_to_ids("<t0>")
     tdot_id = tokenizer.convert_tokens_to_ids("<tdot>")
     lo, hi = int(min(t0_id, tdot_id)), int(max(t0_id, tdot_id))

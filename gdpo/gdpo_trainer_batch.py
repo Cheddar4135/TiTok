@@ -83,68 +83,68 @@ if is_peft_available():
 
 
 
-# 프로젝트 루트
+# project root
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-# VS2+ 모델
+# video-SALMONN 2+ model
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "video_SALMONN2_plus"))
 from qwenvl.model.modeling_qwen2_5_vl import video_SALMONN2_plus
 from qwenvl.data.dataset import LazySupervisedDataset, DataCollatorForSupervisedDataset
 
 
 
-# reward 함수 — 어떤 모듈을 쓸지는 런타임에 --reward_module 로 선택(load_reward_module).
-# trainer 를 reward 마다 복제하지 않고 import 대상만 바꾸기 위함.
+# Reward functions: the module is chosen at runtime with --reward_module (load_reward_module),
+# so the trainer does not have to be duplicated per reward.
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _THIS_DIR)
 
 
 def load_reward_module(module_name: str):
-    """reward 모듈을 동적 로드해 채널 spec 리스트 [(name, fn, needs_gt), ...] 반환.
+    """Dynamically load a reward module and return its channel spec [(name, fn, needs_gt), ...].
 
-    채널 호환 규약 (두 가지 — 모듈이 어느 쪽이든 자유롭게 선택):
-      (1) REWARD_CHANNELS 선언 모듈 (권장, 임의 채널 수/이름)
-            모듈이 REWARD_CHANNELS = [(name:str, fn:callable, needs_gt:bool), ...] 를
-            정의하면 그대로 사용한다. 채널 개수·이름·순서는 모듈이 전적으로 결정.
-            예) reward_functions_rM_sep → [format, len, global, local]
-            (needs_gt=True 면 fn(completion, gt) 로, False 면 fn(completion) 로 호출됨.)
-      (2) convention 모듈 (레거시, 하위호환)
-            REWARD_CHANNELS 가 없으면 함수명 규약으로 조립:
-              필수: format_reward, iou_reward
-              옵션: timestamp_reward, modality_reward (CoT 모듈에만; 없으면 무시)
-            예) reward_functions / reward_functions_rM_fp(_cot)
+    Two supported module conventions:
+        (1) REWARD_CHANNELS (recommended; any number of channels)
+                    If the module defines REWARD_CHANNELS = [(name:str, fn:callable, needs_gt:bool), ...],
+                    it is used as is; the module fully decides channel count, names and order.
+                    e.g. reward_functions_rM_sep3 -> [format, count, global, local, precision]
+                    (needs_gt=True calls fn(completion, gt), False calls fn(completion).)
+        (2) naming convention (legacy)
+                    Without REWARD_CHANNELS, channels are assembled from function names:
+                        required: format_reward, iou_reward
+                        optional: timestamp_reward, modality_reward (ignored if missing)
+                    e.g. reward_functions
 
-    trainer 본체는 반환된 spec(이름/개수)에 무관하게 동작한다:
-      - reward_weights 길이는 채널 수에 맞춰 main()에서 자동조정
-      - wandb 메트릭은 채널 __name__ 으로 자동 로깅(rewards/<name>)
-    → 새 채널을 가진 reward 모듈을 추가해도 trainer 수정 불필요.
+    The trainer works with any returned spec:
+        - reward_weights are resized to the number of channels in main()
+        - W&B metrics are logged per channel __name__ (rewards/<name>)
+    so adding a reward module with new channels needs no trainer change.
     """
     import importlib
     mod = importlib.import_module(module_name)
 
-    # (1) 모듈이 채널 스펙을 직접 선언 → 그대로 사용 (임의 채널 호환)
+    # (1) the module declares its channel spec: use it as is
     raw = getattr(mod, "REWARD_CHANNELS", None)
     if raw is not None:
         specs = []
         for ch in raw:
             if not (isinstance(ch, (tuple, list)) and len(ch) == 3):
                 raise ValueError(
-                    f"[GDPO] {module_name}.REWARD_CHANNELS 항목은 (name, fn, needs_gt) "
-                    f"3-tuple 이어야 함: {ch!r}")
+                    f"[GDPO] {module_name}.REWARD_CHANNELS entries must be (name, fn, needs_gt) "
+                    f"3-tuples: {ch!r}")
             name, fn, needs_gt = ch
             if not callable(fn):
-                raise ValueError(f"[GDPO] reward 채널 '{name}' 의 fn 이 callable 이 아님: {fn!r}")
+                raise ValueError(f"[GDPO] fn of reward channel '{name}' is not callable: {fn!r}")
             specs.append((str(name), fn, bool(needs_gt)))
         if not specs:
-            raise ValueError(f"[GDPO] {module_name}.REWARD_CHANNELS 가 비어 있음")
+            raise ValueError(f"[GDPO] {module_name}.REWARD_CHANNELS is empty")
         return specs
 
-    # (2) 레거시 convention fallback (기존 모듈 무영향)
+    # (2) legacy naming-convention fallback
     specs = [("format", mod.format_reward, False),   # (name, fn, needs_gt)
              ("iou", mod.iou_reward, True)]
-    for name in ("timestamp", "modality"):           # 옵션 (CoT)
+    for name in ("timestamp", "modality"):  # optional (CoT)
         fn = getattr(mod, f"{name}_reward", None)
         if fn is not None:
             specs.append((name, fn, True))
@@ -154,11 +154,11 @@ RewardFunc = Union[str, PreTrainedModel, Callable[[list, list], list[float]]]
 
 
 # ============================================================
-# TTI 디버그 계측 (env TTI_DEBUG=1 로 활성; rank-0 한정, 첫 N step만)
-#   FP_PENALTY_K 와 동일한 env 패턴. 평상시(off) 런엔 영향 0.
+# TTI debug instrumentation (env TTI_DEBUG=1; rank 0 only, first N steps).
+#   No effect on normal runs (off).
 # ============================================================
 TTI_DEBUG = os.environ.get("TTI_DEBUG", "0").lower() in ("1", "true", "yes", "on")
-TTI_DEBUG_STEPS = int(os.environ.get("TTI_DEBUG_STEPS", "3"))   # compute_loss 첫 N step만
+TTI_DEBUG_STEPS = int(os.environ.get("TTI_DEBUG_STEPS", "3"))  # only the first N compute_loss steps
 
 
 def _is_rank0() -> bool:
@@ -166,18 +166,18 @@ def _is_rank0() -> bool:
 
 
 def _tti_dbg(msg: str):
-    """TTI_DEBUG on + rank-0 일 때만 출력."""
+    """Print only when TTI_DEBUG is on and on rank 0."""
     if TTI_DEBUG and _is_rank0():
         print(f"[TTI-DBG] {msg}", flush=True)
 
 
-# 데이터셋별 리워드 로깅용 태그. wandb 키 rewards/<채널>/<태그> 로 분리 → 한 패널에 3선.
+# Dataset tag for per-dataset reward logging: W&B keys rewards/<channel>/<tag>.
 DATASET_TAGS = ["unav", "charades", "puvalor"]
 
 
 def _dataset_tag(video_path) -> str:
-    """video 경로의 /datasets/<name>/ 로 출처 태그 판별.
-      unav_100→unav / charades_sta→charades / pu-valor_2900→puvalor / 그외→unknown."""
+    """Dataset tag from the video path (/datasets/<name>/ or a <name>/ prefix):
+        unav_100 -> unav / charades_sta -> charades / pu-valor_2900 -> puvalor / otherwise unknown."""
     if not video_path:
         return "unknown"
     p = str(video_path)
@@ -192,7 +192,7 @@ def _dataset_tag(video_path) -> str:
 
 
 def count_time_markers(ids, id_range) -> int:
-    """ids(1D tensor 또는 리스트) 중 time-token id_range [lo,hi] 안에 드는 토큰 수."""
+    """Number of tokens in ids (1D tensor or list) inside the time-token id range [lo, hi]."""
     if id_range is None:
         return 0
     lo, hi = id_range
@@ -201,16 +201,16 @@ def count_time_markers(ids, id_range) -> int:
     return sum(1 for x in ids if lo <= int(x) <= hi)
 
 
-# ── resume RNG 로딩 우회 (torch>=2.4 weights_only=True 기본값 대응) ──
-# checkpoint 의 rng_state_*.pth 는 np.random.get_state()(numpy 객체)를 담는데,
-# torch.load(weights_only=True) 가 numpy global 언피클을 거부 →
-# transformers._load_rng_state 가 resume 시 UnpicklingError 로 크래시.
-# 신뢰된 자체 체크포인트이므로 numpy 관련 global 을 allowlist 해 정상 로드.
+# -- resume: RNG state loading workaround (torch>=2.4 defaults to weights_only=True) --
+# rng_state_*.pth stores np.random.get_state() (numpy objects), which
+# torch.load(weights_only=True) refuses to unpickle, so transformers._load_rng_state
+# crashes with UnpicklingError on resume. These are our own trusted checkpoints,
+# so the numpy globals are allow-listed.
 try:
     import numpy as _np
     import torch.serialization as _ts
     import _codecs as _cod
-    # _codecs.encode: numpy random state 직렬화에 포함됨 → rng_state_*.pth 로드 시 필요
+    # _codecs.encode is part of the serialized numpy random state
     _safe = [_np.ndarray, _np.dtype, _cod.encode]
     for _m in ("numpy._core.multiarray", "numpy.core.multiarray"):
         try:
@@ -225,11 +225,11 @@ try:
         pass
     _ts.add_safe_globals([x for x in _safe if x is not None])
 except Exception as _e:
-    print(f"[GDPO] add_safe_globals(numpy) 실패(무시): {_e}")
+    print(f"[GDPO] add_safe_globals(numpy) failed (ignored): {_e}")
 
-# ── 최종 방어: add_safe_globals 로도 못 막는 numpy dtype(예: numpy.dtype[uint32]) 대비 ──
-# 신뢰된 자체 체크포인트 한정. weights_only 언피클이 실패하면 weights_only=False 로 1회 재시도.
-# (resume 시 rng_state_*.pth 로드 크래시 방지. torch 버전차로 allowlist 가 안 먹는 경우 대응.)
+# -- last resort: numpy dtypes not covered by add_safe_globals (e.g. numpy.dtype[uint32]) --
+# For our own trusted checkpoints only: if weights_only unpickling fails, retry once with
+# weights_only=False (avoids rng_state_*.pth crashes on resume across torch versions).
 _orig_torch_load = torch.load
 def _torch_load_trusted(*args, **kwargs):
     try:
@@ -247,7 +247,7 @@ torch.load = _torch_load_trusted
 
 
 # ============================================================
-# 유틸리티
+# Utilities
 # ============================================================
 
 def nanmin(tensor: torch.Tensor) -> torch.Tensor:
@@ -265,15 +265,15 @@ def nanmax(tensor: torch.Tensor) -> torch.Tensor:
 
 
 # ============================================================
-# RepeatSampler (μ>1 rollout 재사용용)
+# RepeatSampler (rollout reuse for mu > 1)
 # ============================================================
 
 class _RepeatSampler:
-    """base sampler 의 각 인덱스를 num_repeat 번 연속 반복해 내보내는 래퍼.
+    """Wrap a base sampler and yield each index num_repeat times in a row.
 
-    μ>1 일 때 dataloader 가 (i,i,j,j,...) 처럼 같은 샘플을 μ 번 연속 주도록 해서,
-    compute_loss 가 첫 호출에만 rollout 을 생성하고 이후 μ-1 번은 캐시를 재사용해도
-    distinct 샘플을 스킵/낭비하지 않게 한다. (TRL GRPOTrainer 의 RepeatSampler 와 동일 취지)
+    With mu > 1 the dataloader yields (i,i,j,j,...), so compute_loss generates a rollout
+    only on the first call and reuses the cache for the remaining mu-1 calls without
+    skipping distinct samples (same idea as TRL GRPOTrainer's RepeatSampler).
     """
     def __init__(self, base_sampler, num_repeat: int):
         self.base_sampler = base_sampler
@@ -289,20 +289,20 @@ class _RepeatSampler:
 
 
 class _BlockRepeatSampler:
-    """base sampler 를 block_size(N)개씩 묶어, 각 블록을 num_repeat(μ)번 연속 반복.
-       → [p0..p_{N-1}] ×μ,  [pN..p_{2N-1}] ×μ, ...  (마지막 부분 블록 <N 은 drop)
+    """Group the base sampler into blocks of block_size (N) and repeat each block num_repeat (mu) times:
+          [p0..p_{N-1}] x mu, [pN..p_{2N-1}] x mu, ...  (a trailing partial block < N is dropped)
 
-    grad_accum=N 과 함께 쓰면 microbatch 순서가 'i,j,i,j'(블록반복) 가 되어, HF 가
-    N microbatch 마다 optimizer.step() 할 때 **μ iteration 사이에 policy 가 실제로
-    업데이트**된다(= PPO/GRPO clip 의 r≠1 보장). N=1 → _RepeatSampler 와 동일(각 인덱스
-    μ번). μ=1 → base 를 N청크로 1회 = 표준 grad_accum(블록 누적)."""
+    With grad_accum=N the microbatch order becomes i,j,i,j (block repeat), so HF calls
+    optimizer.step() every N microbatches and the policy is actually updated between the mu
+    iterations (ratio r != 1 for the PPO/GRPO clip). N=1 equals _RepeatSampler (each index
+    mu times); mu=1 gives one pass in N-chunks = standard grad_accum."""
     def __init__(self, base_sampler, block_size: int, num_repeat: int):
         self.base_sampler = base_sampler
         self.N = max(1, int(block_size))
         self.mu = max(1, int(num_repeat))
 
     def __len__(self):
-        n_full = len(self.base_sampler) // self.N      # 부분 블록 drop
+        n_full = len(self.base_sampler) // self.N  # drop the partial block
         return n_full * self.N * self.mu
 
     def __iter__(self):
@@ -314,7 +314,7 @@ class _BlockRepeatSampler:
                     for j in block:
                         yield j
                 block = []
-        # 마지막 부분 블록(<N)은 버린다 (캐시 정렬 단순화)
+        # drop the trailing partial block (< N) to keep the cache aligned
 
 
 # ============================================================
@@ -322,7 +322,7 @@ class _BlockRepeatSampler:
 # ============================================================
 
 class GDPOTrainer(Trainer):
-    """GDPO Trainer for VS2+ (Qwen2.5-VL 백본)."""
+    """GDPO trainer for video-SALMONN 2+ (Qwen2.5-VL backbone)."""
 
     def __init__(
         self,
@@ -343,12 +343,12 @@ class GDPOTrainer(Trainer):
 
 
         # PEFT
-        # LoRA adapter가 타겟을 llm으로 이미 지정해뒀기 때문에
-        # 이전처럼 인코더 분리를 할 필요가 없음.
+        # The LoRA adapter already targets the LLM,
+        # so the encoders do not need to be split off.
         if peft_config is not None:
             model = get_peft_model(model, peft_config)
-            # gradient_checkpointing + 얼린 base 조합에서 fresh LoRA 로 grad 가
-            # 흐르도록 임베딩 출력에 requires_grad 재적용 (fresh LoRA 경로 필수).
+            # With gradient checkpointing and a frozen base, re-enable requires_grad on the
+            # embedding outputs so gradients reach the fresh LoRA (required for path B).
             if hasattr(model, "enable_input_require_grads"):
                 model.enable_input_require_grads()
 
@@ -356,15 +356,15 @@ class GDPOTrainer(Trainer):
 
         # Reference model
         self.beta = args.beta
-        # PEFT 모델이면 disable_adapter()로 ref 역할 → ref_model 메모리 절약(~14GB).
-        # compute_loss에 이미 disable_adapter 분기가 구현돼 있음.
+        # For a PEFT model, disable_adapter() acts as the reference model (saves ~14 GB);
+        # compute_loss already has the disable_adapter branch.
         _is_peft_model = is_peft_available() and isinstance(model, PeftModel)
         if self.beta == 0.0:
             self.ref_model = None
         elif ref_model is not None:
             self.ref_model = ref_model
         elif _is_peft_model:
-            # PEFT 사용 시 adapter disable로 ref 역할 (메모리 절약)
+            # With PEFT, the disabled adapter is the reference (saves memory)
             print("[GDPO] PEFT model detected → ref_model=None (use disable_adapter path)")
             self.ref_model = None
         elif is_deepspeed_zero3_enabled():
@@ -410,8 +410,8 @@ class GDPOTrainer(Trainer):
             do_sample=True,
             temperature=self.temperature,
             top_p=1.0,
-            top_k=50,                 # base config top_k=1 override (다양성 확보)
-            repetition_penalty=1.0,   # time token 반복 페널티 제거
+            top_k=50,  # override the base config top_k=1 (diversity)
+            repetition_penalty=1.0,  # no repetition penalty on time tokens
             num_return_sequences=self.num_generations,
             pad_token_id=pad_token_id,
         )
@@ -419,48 +419,47 @@ class GDPOTrainer(Trainer):
 
         # ── DAPO clip-higher (ε_high > ε_low) ──────────────────────────────
         # clipped surrogate:  loss = -min( r·A,  clip(r, 1-ε_low, 1+ε_high)·A )
-        #   r = π_θ(o)/π_old(o) = exp(logp - old_logp).  ε_high 를 키워(upper clip 완화)
-        #   저확률 토큰의 확률 상승 여지를 남겨 탐색을 유지 = clip-higher.
-        # DAPO 권장값 ε_low=0.2 / ε_high=0.28. config(clip.*)에서 args 로 주입됨.
+        #   r = pi_theta(o)/pi_old(o) = exp(logp - old_logp). A larger eps_high (looser upper clip)
+        #   leaves room for low-probability tokens to grow, keeping exploration (clip-higher).
+        # DAPO recommends eps_low=0.2 / eps_high=0.28; injected into args from config (clip.*).
         self.epsilon_low = getattr(args, "epsilon", 0.2)
         self.epsilon_high = getattr(args, "epsilon_high", None) or 0.28
-        # clip-higher 경로 사용 여부 (이 trainer 의 기본 동작).
+        # Whether to use the clip-higher path (the default behaviour of this trainer).
         self.clip_higher = getattr(args, "clip_higher", True)
         self.use_grpo = getattr(args, "use_grpo", True)
 
-        # ── μ (num_iterations): 한 rollout 을 μ 번 정책 업데이트에 재사용 ──────────
-        # μ>1 이라야 old(생성시점 snapshot) 와 현재 정책이 갈라져 r=exp(new-old)≠1 →
-        # clip-higher 가 실제 binding 됨. μ=1 이면 매 step 재생성(=순수 GDPO 동작).
+        # -- mu (num_iterations): reuse one rollout for mu policy updates --
+        # Only with mu > 1 do the old (generation-time snapshot) and current policies differ, so
+        # r = exp(new - old) != 1 and clip-higher binds. mu=1 regenerates every step (plain GDPO).
         self.num_iterations = max(1, int(getattr(args, "num_iterations", 1)))
 
-        # ── [clip2] grad_accum 지원 (effective batch ≥ N×num_gpu) ────────────
-        # block-repeat sampler 로 microbatch 순서를 'i,j,i,j' 로 만들고, HF 가 N(grad_accum)
-        # microbatch 마다 optimizer.step() → μ iteration 사이에 policy 가 업데이트되어 clip
-        # 의 r≠1 이 유지된다. 캐시는 **prompt 시그니처 키**로 관리(슬롯/카운터 X) → DDP 가
-        # microbatch 순서를 흩어도 잘못된 재사용/크래시 없음(시그니처 불일치=cache miss→재생성).
-        #   _rollout_cache: sig -> {"R": rollout, "uses": int}. μ 도달 엔트리는 즉시 evict(embed 해제).
+        # -- grad_accum support (effective batch >= N x num_gpu) --
+        # The block-repeat sampler orders microbatches i,j,i,j; HF steps the optimizer every N
+        # (grad_accum) microbatches, so the policy is updated between the mu iterations and
+        # r != 1 for the clip. The cache is keyed by a prompt signature (no slots/counters), so
+        # DDP reordering cannot cause wrong reuse or crashes (signature mismatch = miss -> regenerate).
+        #   _rollout_cache: sig -> {"R": rollout, "uses": int}. Entries reaching mu are evicted at once.
         self.grad_accum = max(1, int(getattr(args, "gradient_accumulation_steps", 1)))
         self._rollout_cache = {}
 
-        # ── [sep2] multi-segment(GT>=2) prompt 의 advantage 가중 ──────────────
-        # GDPO 는 prompt 그룹 내부에서 advantage 를 정규화하므로(한 microbatch=한 prompt) reward
-        # 절대값으로는 "multi 가 single 보다 중요"가 전달되지 않는다(정규화로 제거). 대신
-        # multi-GT step 의 (정규화된) advantage 를 w 배 해서 gradient mass 를 키워, 데이터
-        # prior(single 편향, 4:6)를 상쇄한다. w=1.0 이면 sep1 과 동일 동작.
-        # ⚠️ clip-higher on/off 무관: advantage 는 _generate_rollout 에서 산출되어 두 loss
-        #    경로(clip_higher / 순수 GDPO)가 공통으로 R["advantages"] 를 쓰므로 자동 호환.
-        self.multi_seg_weight = float(getattr(args, "multi_seg_weight", 1.0))  # 1.0=off(통합 기본)
+        # -- advantage weight for multi-segment (GT >= 2) prompts --
+        # GDPO normalizes advantages within each prompt group (one microbatch = one prompt), so the
+        # absolute reward cannot express that multi-segment prompts matter more. Instead the
+        # normalized advantage of multi-GT steps is multiplied by w, offsetting the single-segment
+        # prior of the data. w=1.0 disables it (the paper uses 1.0).
+        # Works with and without clip-higher: both loss paths use R['advantages'] from _generate_rollout.
+        self.multi_seg_weight = float(getattr(args, "multi_seg_weight", 1.0))  # 1.0 = off (default)
 
 
         # Data collator — VS2+
-        # VS2의 av_dataset.py 대체하는 LazySupervisedDataset
+        # LazySupervisedDataset (replaces video-SALMONN 2's av_dataset.py)
         data_collator = DataCollatorForSupervisedDataset(tokenizer=processing_class)
 
 
-        # 로그 정리 용
+        # logging
         model.warnings_issued["estimate_tokens"] = True
 
-        # 메트릭
+        # metrics
         self._metrics = defaultdict(list)
 
 
@@ -488,7 +487,7 @@ class GDPOTrainer(Trainer):
 
 
     # ============================================================
-    # Trainer 오버라이드 : 비활성화
+    # Trainer override: disabled
     # ============================================================
 
     def _set_signature_columns_if_needed(self):
@@ -499,17 +498,17 @@ class GDPOTrainer(Trainer):
         return inputs
 
     def _get_train_sampler(self, *args, **kwargs):
-        # [clip2] block-repeat 순서로 공급.
-        #   ⚠️ accelerate 가 배치를 rank 들에 **round-robin** 으로 분배한다(BatchSamplerShard,
-        #      split_batches=False). 따라서 글로벌 block_size 를 grad_accum 으로만 잡으면
-        #      분배 후 각 rank 가 [a,a](인접반복)를 받아 → grad_accum 이 a_fresh·a_cached 를
-        #      같은 optimizer step 에 묶음 → policy 업데이트 없이 r≈1 → clip 무력 + effective
-        #      batch 도 grad_accum 만큼 안 늘어남(같은 prompt 중복).
-        #   ✅ block_size = grad_accum × num_processes 로 잡으면, round-robin 분배 후 각 rank 가
-        #      정확히 [p0..p_{N-1}]×μ (N=grad_accum, **서로 다른** prompt) 를 받는다:
+        # Feed batches in block-repeat order.
+        #   accelerate distributes batches to ranks round-robin (BatchSamplerShard,
+        #   split_batches=False). With a global block_size of only grad_accum, each rank would
+        #   receive [a,a] (adjacent repeats) after sharding, grad_accum would put a_fresh and
+        #   a_cached in the same optimizer step, r would stay ~1 (clip ineffective) and the
+        #   effective batch would not grow (duplicate prompts).
+        #   With block_size = grad_accum x num_processes, after round-robin sharding each rank
+        #   receives exactly [p0..p_{N-1}] x mu (N = grad_accum, distinct prompts):
         #        global [a,b,c,d]×μ  --round-robin(G=2)-->  rank0=[a,c]×μ, rank1=[b,d]×μ
-        #      → μ 사이 policy 업데이트(clip r≠1) + effective batch = grad_accum × num_processes.
-        #      (1 GPU 면 ×1 → block_size=grad_accum, 그대로 정상.)
+        #   -> policy updates between mu iterations (clip r != 1) and effective batch = grad_accum x num_processes.
+        #   (With 1 GPU this is block_size = grad_accum.)
         base = super()._get_train_sampler(*args, **kwargs)
         if base is not None and (self.num_iterations > 1 or self.grad_accum > 1):
             world = max(1, int(getattr(self.accelerator, "num_processes", 1)))
@@ -518,7 +517,7 @@ class GDPOTrainer(Trainer):
         return base
 
     def _prompt_sig(self, inputs):
-        """prompt 식별용 경량 시그니처(충돌 사실상 0). 캐시 키로 사용 → 순서 무관 정확."""
+        """Lightweight prompt signature (collisions practically impossible); used as cache key, order independent."""
         t = inputs["input_ids"][0]
         return (int(t.shape[0]), int(t.sum().item()),
                 int(t[::7].sum().item()), int(t.float().square().sum().item()))
@@ -534,14 +533,14 @@ class GDPOTrainer(Trainer):
         position_ids=None, second_per_grid_ts=None,
         inputs_embeds=None, return_entropy=False,
     ):
-        """VS2+의 sft_forward
+        """Calls video-SALMONN 2+ sft_forward.
         → logits
         → per-token log probability.
 
-        inputs_embeds가 주어지면 video/audio encoder 재실행 안 함 (캐싱된 embed 재사용).
-        rope_index 계산엔 input_ids/video_grid_thw/audio_lengths 필요하므로 여전히 전달.
+        If inputs_embeds is given, the video/audio encoders are not re-run (cached embeddings are reused).
+        input_ids/video_grid_thw/audio_lengths are still passed for the RoPE index computation.
         """
-        # inputs_embeds가 있으면 pixel_values_videos/audio_feature 전달 안 함 → sft_forward가 재인코딩 스킵
+        # With inputs_embeds, pixel_values_videos/audio_feature are not passed, so sft_forward skips re-encoding
         if inputs_embeds is not None:
             pixel_values_videos = None
             audio_feature = None
@@ -561,7 +560,7 @@ class GDPOTrainer(Trainer):
 
         logits = logits[:, :-1, :]
         input_ids = input_ids[:, 1:]
-        # 길이 정렬
+        # align lengths
         min_len = min(logits.size(1), input_ids.size(1))
         logits = logits[:, -min_len:, :]
         input_ids = input_ids[:, -min_len:]
@@ -571,13 +570,13 @@ class GDPOTrainer(Trainer):
         per_token_logps = []
         entropies = [] if return_entropy else None
         for logits_row, input_ids_row in zip(logits, input_ids):
-            # 메모리 절약: full log_softmax([seq,vocab]) 상주 복사 없이 logp = logit − logsumexp
+            # Saves memory: logp = logit - logsumexp without keeping a full log_softmax([seq, vocab]) copy
             token_logit = torch.gather(
                 logits_row, dim=1, index=input_ids_row.unsqueeze(1)
             ).squeeze(1)
             per_token_logps.append(token_logit - torch.logsumexp(logits_row, dim=-1))
             if return_entropy:
-                # 정책 분포 엔트로피 H=-Σ p·logp (position별, vocab 합). 로깅용이라 detach.
+                # Policy entropy H = -sum p*logp per position over the vocab. Logging only, detached.
                 log_probs = logits_row.log_softmax(dim=-1)
                 entropies.append((-(log_probs.exp() * log_probs).sum(dim=-1)).detach())
                 del log_probs
@@ -591,9 +590,8 @@ class GDPOTrainer(Trainer):
 
 
     # ============================================================
-    # GDPO advantage 계산
+    # GDPO advantage computation
     # ============================================================
-    # 기존 코드와 동일
     def _compute_gdpo_advantages(self, rewards_per_func, rewards):
         num_funcs = rewards_per_func.shape[1]
         device = rewards_per_func.device
@@ -629,9 +627,9 @@ class GDPOTrainer(Trainer):
     # ============================================================
 
     def _completion_logps(self, model, R, raw_encode_model, return_entropy=False):
-        """캐시된 completion 에 대해 per-token logps 계산.
-        grad 흐름 여부(no_grad/grad)는 호출하는 쪽 컨텍스트가 결정한다.
-        return_entropy=True 면 (logps, entropy[num_gen, comp_len]) 반환 (로깅용, detach)."""
+        """Per-token logps for the cached completions.
+        Whether gradients flow (no_grad / grad) is decided by the caller's context.
+        With return_entropy=True returns (logps, entropy[num_gen, comp_len]) (logging only, detached)."""
         _VIDEO_TOKEN_ID = 151656
         comp_len = R["comp_len"]
         all_logps = []
@@ -639,7 +637,7 @@ class GDPOTrainer(Trainer):
         for g in range(self.num_generations):
             pc_ids = torch.cat([R["prompt_ids_single"], R["completion_ids_clean"][g:g + 1]], dim=1)
             pc_mask = torch.cat([R["prompt_mask_single"], R["completion_mask"][g:g + 1]], dim=1)
-            # text 위치는 trainable embed_tokens(grad), video/audio 위치는 캐시된 frozen embed.
+            # Text positions use the trainable embed_tokens (grad); video/audio positions use the cached frozen embeddings.
             text_embeds = raw_encode_model.model.embed_tokens(pc_ids)
             if R["cached_video_embeds"] is not None:
                 mask = (pc_ids == _VIDEO_TOKEN_ID)
@@ -672,17 +670,17 @@ class GDPOTrainer(Trainer):
         return torch.cat(all_logps, dim=0)
 
     def _generate_rollout(self, model, inputs):
-        """한 rollout 생성 + 캐시. μ>1 이면 이 결과를 μ 번의 정책 업데이트에 재사용한다.
-        포함: completion 샘플링, reward/advantage, old(behavior) logps 스냅샷, ref logps(KL용),
-              frozen video/audio embed 캐시. (생성·로깅은 fresh rollout 때 1회만 수행)"""
+        """Generate and cache one rollout; with mu > 1 it is reused for mu policy updates.
+        Contains: sampled completions, rewards/advantages, the old (behaviour) logps snapshot, ref logps (KL),
+                    cached frozen video/audio embeddings. (Generation and logging happen once per fresh rollout.)"""
         device = self.accelerator.device
         _unwrapped = self.accelerator.unwrap_model(model)
 
-        # ── 입력 추출 (VS2+ 데이터셋 필드) ──
+        # -- inputs (video-SALMONN 2+ dataset fields) --
         prompt_ids = inputs["input_ids"].to(device)
         prompt_mask = inputs["attention_mask"].to(device)
 
-        # GT 답변 제거 — 프롬프트만 추출
+        # drop the GT answer, keep only the prompt
         labels = inputs.get("labels", None)
         if labels is not None:
             labels = labels.to(device)
@@ -692,7 +690,7 @@ class GDPOTrainer(Trainer):
                 prompt_ids = prompt_ids[:, :prompt_end_idx]
                 prompt_mask = prompt_mask[:, :prompt_end_idx]
 
-        # [TTI-DBG] ⑤ prompt 에 time-marker 가 보존됐는지 검증 (rank0, 첫 N step)
+        # [TTI-DBG] check that time markers survive in the prompt (rank 0, first N steps)
         if TTI_DEBUG and self.accelerator.is_main_process and getattr(self, "_tti_dbg_step0", None) is None:
             self._tti_dbg_step0 = self.state.global_step
         if (TTI_DEBUG and self.accelerator.is_main_process
@@ -703,8 +701,8 @@ class GDPOTrainer(Trainer):
                      f"model.config.time_token_id_range={_id_range}, "
                      f"#time_markers_in_prompt={_n_mark}")
             if _id_range is not None and _n_mark == 0:
-                _tti_dbg("⚠️ WARNING: tti ON(range set) 인데 prompt 에 time-marker 0개 "
-                         "(데이터 마커 미삽입 의심 — rope ON 분기와 불일치)")
+                _tti_dbg("WARNING: TTI on (range set) but the prompt contains 0 time markers "
+                         "(markers missing from the data? mismatches the rope ON branch)")
             try:
                 _vs_id = self.processing_class.convert_tokens_to_ids("<|vision_start|>")
                 _row = prompt_ids[0].tolist()
@@ -713,9 +711,9 @@ class GDPOTrainer(Trainer):
                     _dec = self.processing_class.decode(_row[_p:_p + 40], skip_special_tokens=False)
                     _tti_dbg(f"   prompt[vision_start:+40]= {_dec!r}")
             except Exception as _e:
-                _tti_dbg(f"   vision_start 슬라이스 디코드 실패: {_e}")
+                _tti_dbg(f"   failed to decode the vision_start slice: {_e}")
 
-        # 멀티모달 입력
+        # multimodal inputs
         pixel_values_videos = inputs.get("pixel_values_videos", None)
         if pixel_values_videos is not None:
             pixel_values_videos = pixel_values_videos.to(device=device, dtype=torch.bfloat16)
@@ -730,7 +728,7 @@ class GDPOTrainer(Trainer):
         if second_per_grid_ts is not None:
             second_per_grid_ts = second_per_grid_ts.to(device)
 
-        # 리워드 계산용 GT — gpt 답변에서 시간 구간 추출
+        # GT for the rewards: time segments parsed from the gpt answer
         from reward_functions import decode_vtg_time
         gt_intervals = []
         raw_labels = inputs.get("labels", None)
@@ -752,7 +750,7 @@ class GDPOTrainer(Trainer):
         # ── Generate completions ──
         all_completion_ids = []
         prompt_length = prompt_ids.size(1)
-        # generate 동안 gradient checkpointing 비활성화 (모듈 직접 순회 — 래퍼 우회).
+        # Disable gradient checkpointing during generate (iterate modules directly, bypassing wrappers).
         for _m in model.modules():
             if hasattr(_m, "gradient_checkpointing"):
                 _m.gradient_checkpointing = False
@@ -798,7 +796,7 @@ class GDPOTrainer(Trainer):
                 gen_ids = gen_ids[:, prompt_length:]
                 all_completion_ids.append(gen_ids)
 
-        # generate 끝 → gradient checkpointing 재활성화 (use_reentrant=False)
+        # generate done: re-enable gradient checkpointing (use_reentrant=False)
         import functools as _functools
         from torch.utils.checkpoint import checkpoint as _torch_checkpoint
         _gc_func = _functools.partial(_torch_checkpoint, use_reentrant=False)
@@ -807,7 +805,7 @@ class GDPOTrainer(Trainer):
                 _m.gradient_checkpointing = True
                 _m._gradient_checkpointing_func = _gc_func
 
-        # 패딩 후 결합
+        # pad and concatenate
         import torch.nn.functional as F
         max_len = max(c.size(1) for c in all_completion_ids)
         pad_id = self.processing_class.pad_token_id or 0
@@ -816,7 +814,7 @@ class GDPOTrainer(Trainer):
         prompt_ids = prompt_ids.repeat(self.num_generations, 1)
         prompt_mask = prompt_mask.repeat(self.num_generations, 1)
 
-        # EOS 마스크
+        # EOS mask
         is_eos = completion_ids == self.processing_class.eos_token_id
         eos_idx = torch.full((is_eos.size(0),), is_eos.size(1), dtype=torch.long, device=device)
         if completion_ids.size(1) > 0 and is_eos.any():
@@ -829,7 +827,7 @@ class GDPOTrainer(Trainer):
             print(f"[GDPO STEP] prompt_len={prompt_length}, actual_lengths={[int(l) for l in actual_lengths]}, comp_len={completion_ids.size(1)}")
         comp_len = completion_ids.size(1)
 
-        # completion 의 비디오/오디오 placeholder 토큰 제거 (logprob 계산 시 feature 수 불일치 방지)
+        # Remove video/audio placeholder tokens from the completion (avoids feature-count mismatch in logprobs)
         _VIDEO_TOKEN_ID = 151656
         completion_ids_clean = completion_ids.clone()
         completion_ids_clean[completion_ids_clean == _VIDEO_TOKEN_ID] = pad_id
@@ -839,7 +837,7 @@ class GDPOTrainer(Trainer):
         prompt_ids_single = prompt_ids[:1]
         prompt_mask_single = prompt_mask[:1]
 
-        # ── Encoding cache (frozen video/audio encoder → rollout 당 1회) ──
+        # -- encoding cache (frozen video/audio encoders, once per rollout) --
         raw_encode_model = _unwrapped.get_base_model() if hasattr(_unwrapped, "get_base_model") else _unwrapped
         cached_video_embeds = None
         cached_audio_embeds = None
@@ -852,7 +850,7 @@ class GDPOTrainer(Trainer):
                 cached_audio_embeds = raw_encode_model.audio(af).flatten(0, 1)
         audio_token_id_cfg = getattr(_unwrapped.config, "audio_token_id", None)
 
-        # rollout 상태 캐시 (다음 μ-1 번 compute_loss 호출이 그대로 재사용)
+        # rollout state cache (reused as is by the next mu-1 compute_loss calls)
         R = {
             "prompt_ids_single": prompt_ids_single,
             "prompt_mask_single": prompt_mask_single,
@@ -868,16 +866,16 @@ class GDPOTrainer(Trainer):
             "audio_token_id_cfg": audio_token_id_cfg,
         }
 
-        # ── old(behavior) policy logps 스냅샷 ──
-        # μ=1 이면 매 step 재생성 → old=현재 정책 detach 로 충분(추가 forward 생략, 원래 비용 유지).
-        # μ>1 이면 별도 no_grad 스냅샷을 떠서 이후 재사용 step 들의 ratio 기준(과거 정책)으로 고정.
+        # -- old (behaviour) policy logps snapshot --
+        # mu=1 regenerates every step, so old = current policy detached (no extra forward).
+        # mu>1 takes a separate no_grad snapshot that stays fixed as the ratio reference for the reuse steps.
         if self.num_iterations > 1:
             with torch.no_grad():
                 R["old_per_token_logps"] = self._completion_logps(model, R, raw_encode_model)
         else:
-            R["old_per_token_logps"] = None   # compute_loss 에서 per_token_logps.detach() 사용
+            R["old_per_token_logps"] = None  # compute_loss uses per_token_logps.detach()
 
-        # ── reference logps (KL용, 정책과 무관하게 고정 → 캐시) ──
+        # -- reference logps (for KL; fixed regardless of the policy, so cached) --
         R["ref_per_token_logps"] = None
         if self.beta != 0.0:
             with torch.no_grad():
@@ -905,9 +903,9 @@ class GDPOTrainer(Trainer):
             rewards_per_func[:, i] = torch.tensor(output, dtype=torch.float32, device=device)
         rewards = rewards_per_func.sum(dim=1)
         advantages = self._compute_gdpo_advantages(rewards_per_func, rewards)
-        # [sep2] multi-segment(GT>=2) prompt 면 advantage 를 w 배 → single prior 상쇄.
-        #   한 step 의 모든 rollout 은 같은 GT(=같은 multi/single) 라 그룹 전체에 동일 스케일.
-        #   (정규화 이후 곱이므로 within-group 상대 신호는 유지, gradient 크기만 w 배)
+        # For multi-segment (GT >= 2) prompts, scale the advantage by w to offset the single-segment prior.
+        #   All rollouts of a step share the same GT, so the whole group gets the same scale
+        #   (applied after normalization: relative signal kept, only the gradient size scales by w).
         _n_gt = len(gt_intervals)
         _is_multi = _n_gt >= 2
         if _is_multi and self.multi_seg_weight != 1.0:
@@ -918,12 +916,12 @@ class GDPOTrainer(Trainer):
         R["rewards_per_func"] = rewards_per_func
         R["rewards"] = rewards
         R["advantages"] = advantages
-        # [dataset-tag] 이 rollout 의 출처 (한 step=한 prompt → 단일 태그). 데이터셋별 리워드 로깅용.
+        # [dataset-tag] source of this rollout (one step = one prompt -> one tag), for per-dataset reward logging.
         _vid = inputs.get("video", None)
         _vp = _vid[0] if isinstance(_vid, (list, tuple)) and _vid else _vid
         R["source_tag"] = _dataset_tag(_vp)
 
-        # ── 디버그: GT/예측 세그먼트 raw + 초 단위 출력 (rank 0) ──
+        # -- debug: raw and second-level GT / predicted segments (rank 0) --
         if self.accelerator.is_main_process:
             _SEG_CAPTURE_DEBUG = re.compile(
                 r"[Ff]rom\s+((?:<t\d>){1,4}<tdot><t\d>)\s+to\s+((?:<t\d>){1,4}<tdot><t\d>)"
@@ -938,7 +936,7 @@ class GDPOTrainer(Trainer):
                     e = decode_vtg_time(e_str)
                     if s is not None and e is not None:
                         segs.append(f"({s:.1f}, {e:.1f})")
-                return ", ".join(segs) if segs else None   # None = answer 파싱 실패
+                return ", ".join(segs) if segs else None   # None = answer could not be parsed
 
             gt_raw_str = "[none]"
             if raw_labels is not None:
@@ -951,19 +949,19 @@ class GDPOTrainer(Trainer):
             gt_sec_str = ", ".join(f"({s:.1f}, {e:.1f})" for s, e in gt_intervals) if gt_intervals else "[none]"
             print(f"[GDPO SAMPLES] GT raw: {gt_raw_str}")
             print(f"[GDPO SAMPLES] GT sec: {gt_sec_str}")
-            # 채널 이름은 reward_funcs 의 __name__ (load_reward_module 가 부여) → 하드코딩 인덱스 X.
-            # 모듈마다 채널 구성이 달라도(format/iou | format/len/global/local | +CoT) 그대로 출력.
+            # Channel names come from the reward functions' __name__ (set by load_reward_module), no hardcoded indices,
+            # so any channel layout is printed correctly.
             _chan_names = [getattr(f, "__name__", f"ch{j}") for j, f in enumerate(self.reward_funcs)]
             for gi, c in enumerate(completions):
                 _vals = ", ".join(f"{nm}={rewards_per_func[gi, j].item():.3f}"
                                   for j, nm in enumerate(_chan_names))
                 _ans = _answer_tuples(c)
                 print(f"  [{gi}] {_vals}")
-                print(f"       raw:    {c}")                      # 원본 예측 그대로
+                print(f"       raw:    {c}")
                 if _ans is not None:
-                    print(f"       answer: {_ans}")               # (s, e) 튜플
+                    print(f"       answer: {_ans}")               # (s, e) tuples
                 else:
-                    print(f"       answer: [parse fail]")          # 파싱 실패(원본은 위 raw 참고)
+                    print(f"       answer: [parse fail]")          # parse failed (see raw above)
 
         return R
 
@@ -973,26 +971,26 @@ class GDPOTrainer(Trainer):
 
         _unwrapped = self.accelerator.unwrap_model(model)
 
-        # ── [clip2] prompt-시그니처 키 rollout 캐시 (순서 무관·DDP 안전) ──────────
-        #   같은 prompt 가 μ 번 들어오면 첫 호출에만 생성→캐시, 이후 μ-1 번 재사용.
-        #   캐시 키 = prompt 시그니처 → microbatch 순서가 흩어져도(블록반복/DDP) 잘못된
-        #   재사용/크래시 없음(불일치=miss→재생성). μ 도달 엔트리는 즉시 evict(embed 해제).
+        # -- prompt-signature rollout cache (order independent, DDP safe) --
+        #   When the same prompt arrives mu times, generate on the first call and reuse it mu-1 times.
+        #   The cache key is the prompt signature, so scattered microbatch order (block repeat / DDP)
+        #   cannot cause wrong reuse or crashes (mismatch = miss -> regenerate). Entries reaching mu are evicted.
         sig = self._prompt_sig(inputs)
         entry = self._rollout_cache.get(sig)
         if entry is None or entry["uses"] >= self.num_iterations:
-            # fresh: 새 rollout 생성(이때 old_logps 스냅샷 고정). cache miss(μ_iter≥1) 도 여기서 self-heal.
+            # fresh: generate a new rollout (old_logps snapshot fixed here). A cache miss (mu_iter >= 1) also self-heals here.
             R = self._generate_rollout(model, inputs)
             entry = {"R": R, "uses": 1}
             self._rollout_cache[sig] = entry
             fresh = True
         else:
-            entry["uses"] += 1          # reuse: old_logps 는 고정(R 그대로), policy 만 갱신됨 → r≠1
+            entry["uses"] += 1  # reuse: old_logps stay fixed (same R), only the policy changes -> r != 1
             R = entry["R"]
             fresh = False
-        # μ 도달 → evict(embed 캐시 해제). 캐시 크기 ~grad_accum 로 bound.
+        # reached mu -> evict (frees the embedding cache). Cache size stays ~grad_accum.
         if entry["uses"] >= self.num_iterations:
             self._rollout_cache.pop(sig, None)
-        # 비정상적으로 캐시가 커지면(순서 교란) 오래된 것부터 정리(메모리 가드)
+        # If the cache grows abnormally (order disturbed), drop the oldest entries (memory guard)
         while len(self._rollout_cache) > self.grad_accum + 1:
             self._rollout_cache.pop(next(iter(self._rollout_cache)))
         if self.accelerator.is_main_process and self.num_iterations > 1:
@@ -1004,18 +1002,18 @@ class GDPOTrainer(Trainer):
         completion_mask = R["completion_mask"]
         advantages = R["advantages"]
 
-        # ── 새 정책 per-token logps (grad O) — 캐시된 completion 에 대해 재계산 ──
-        #    return_entropy=True → 정책 분포 엔트로피도 함께(로깅용, detach).
+        # -- new policy per-token logps (with grad), recomputed for the cached completions --
+        #    return_entropy=True would also return the policy entropy (logging only, detached).
         raw_encode_model = _unwrapped.get_base_model() if hasattr(_unwrapped, "get_base_model") else _unwrapped
         per_token_logps = self._completion_logps(
-            model, R, raw_encode_model, return_entropy=False)  # entropy off (메모리 절약; μ=1 진단 불필요)
+            model, R, raw_encode_model, return_entropy=False)  # entropy off (saves memory)
 
-        # old(behavior) logps: μ>1 이면 생성시점 스냅샷, μ=1 이면 현재 정책 detach(=ratio 1).
+        # old (behaviour) logps: generation-time snapshot for mu>1, current policy detached for mu=1 (ratio 1).
         old_per_token_logps = R["old_per_token_logps"]
         if old_per_token_logps is None:
             old_per_token_logps = per_token_logps.detach()
 
-        # ── KL (캐시된 ref vs 새 정책) ──
+        # -- KL (cached ref vs new policy) --
         per_token_kl = None
         if self.beta != 0.0 and R["ref_per_token_logps"] is not None:
             ref_per_token_logps = R["ref_per_token_logps"]
@@ -1054,13 +1052,13 @@ class GDPOTrainer(Trainer):
                 per_token_loss = per_token_loss + self.beta * per_token_kl
             loss = (per_token_loss * completion_mask).sum() / completion_mask.sum()
 
-        # ── 로깅 ──
+        # -- logging --
         rewards_per_func = R["rewards_per_func"]
         rewards = R["rewards"]
         completion_length = self.accelerator.gather_for_metrics(completion_mask.sum(1)).float().mean().item()
         self._metrics["completion_length"].append(completion_length)
 
-        # [wandb] Advantage 통계 (group-norm + multi_seg_weight 반영 후 실제 사용값)
+        # [wandb] advantage statistics (values actually used, after group norm and multi_seg_weight)
         with torch.no_grad():
             self._metrics["advantage_mean"].append(self.accelerator.gather_for_metrics(advantages).mean().item())
             self._metrics["advantage_std"].append(self.accelerator.gather_for_metrics(advantages).std().item())
@@ -1071,9 +1069,9 @@ class GDPOTrainer(Trainer):
             fname = getattr(reward_func, "__name__", f"func_{i}")
             self._metrics[f"rewards/{fname}"].append(reward_per_func[i].item())
 
-        # [dataset-tag] 데이터셋별 리워드 분리 로깅 → wandb 키 rewards/<채널>/<태그>.
-        #   rank 마다 이 step 의 출처는 하나(모든 rollout row 동일) → row별 태그id 텐서로 만들어
-        #   rewards 와 함께 gather 후 태그별 평균. 해당 태그 샘플이 이 step 에 없으면 skip(그래프에 gap).
+        # [dataset-tag] per-dataset reward logging -> W&B keys rewards/<channel>/<tag>.
+        #   Each rank has one source per step (same for all rollout rows): build a per-row tag-id tensor,
+        #   gather it with the rewards and average per tag. Tags absent from this step are skipped (gap in the plot).
         _rpf = R["rewards_per_func"]
         _sid = DATASET_TAGS.index(R["source_tag"]) if R.get("source_tag") in DATASET_TAGS else -1
         _row_sid = torch.full((_rpf.shape[0],), _sid, device=_rpf.device, dtype=torch.long)
@@ -1091,7 +1089,7 @@ class GDPOTrainer(Trainer):
         std_grouped = rewards.view(-1, self.num_generations).std(dim=1)
         self._metrics["reward_std"].append(self.accelerator.gather_for_metrics(std_grouped).mean().item())
 
-        # clip-higher 진단: ratio 평균 + clip 비율 (μ>1 에서 실제 binding 되는지 확인용)
+        # clip-higher diagnostics: mean ratio + clip fraction (to check that the clip binds for mu > 1)
         with torch.no_grad():
             ratio = torch.exp(per_token_logps - old_per_token_logps)
             mask_f = completion_mask.float()
@@ -1110,14 +1108,14 @@ class GDPOTrainer(Trainer):
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-        # [clip2] 여기서 반환하는 loss 는 'prompt 1개'에 대한 평균(토큰/그룹 평균)이며,
-        # grad_accum 으로 나누지 않는다. HF Trainer.training_step 이
-        # (model_accepts_loss_kwargs=False 이므로) loss/=gradient_accumulation_steps 로 한 번만
-        # 스케일 → N microbatch 누적 시 N-prompt 평균이 됨. 이중 스케일 없음.
+        # The returned loss is the mean for one prompt (over tokens/group) and is not divided by
+        # grad_accum: HF Trainer.training_step scales loss /= gradient_accumulation_steps once
+        # (model_accepts_loss_kwargs=False), so accumulating N microbatches gives the N-prompt mean.
+        # No double scaling.
         return loss
 
     # ============================================================
-    # 로깅
+    # logging
     # ============================================================
 
     def log(self, logs: dict, start_time=None) -> None:
@@ -1131,28 +1129,27 @@ class GDPOTrainer(Trainer):
 
 
 # ============================================================
-# 모델 로딩 (VS2+)
+# Model loading (video-SALMONN 2+)
 # ============================================================
 
 def load_model_and_tokenizer(model_path, model_base, tti_mode="off"):
-    """VS2+ (Qwen2.5-VL 기반) 모델 로딩.
+    """Load video-SALMONN 2+ (Qwen2.5-VL based).
 
     tti_mode:
-      - "off": base config의 time_token_id_range를 무시(None으로 덮어씀).
-               rope_index가 OFF 분기를 타도록 강제. 데이터에 time marker가
-               섞여있지 않을 때 사용.
-      - "on" : base config 그대로 사용. 데이터에 time marker가 포함된 경우.
+        - "off": ignore the base config's time_token_id_range (overwritten with None) so that
+                 rope_index takes the OFF branch. Use when the data has no time markers.
+        - "on" : keep the base config. Use when the data contains time markers.
     """
     print(f"[GDPO] Loading VS2+ model (tti_mode={tti_mode})")
     print(f"[GDPO]   model_path (SFT ckpt): {model_path}")
     print(f"[GDPO]   model_base: {model_base}")
 
-    # 토크나이저 로드
+    # tokenizer
     tok_path = model_path if os.path.isdir(model_path) and os.path.exists(os.path.join(model_path, "tokenizer.json")) else model_base
     print(f"[GDPO] Loading tokenizer from: {tok_path}")
     tokenizer = AutoTokenizer.from_pretrained(tok_path, model_max_length=10000, padding_side="left")
 
-    # 모델 로드
+    # model
     print(f"[GDPO] Loading base model from: {model_base}")
     model = video_SALMONN2_plus.from_pretrained(
         model_base,
@@ -1160,10 +1157,9 @@ def load_model_and_tokenizer(model_path, model_base, tti_mode="off"):
         torch_dtype=torch.bfloat16,
     )
 
-    # TTI mode 적용: OFF 모드일 때 base config의 time_token_id_range를 비활성화.
-    # base "video_salmonn2_plus_7B_time_tokens"는 time_token_id_range가 박혀있어
-    # 이대로 두면 rope_index가 항상 TTI-ON 분기를 타서, 데이터에 time marker가
-    # 없는 경우 IndexError가 발생함.
+    # TTI mode: in OFF mode disable the base config's time_token_id_range.
+    # The time-token base model has time_token_id_range set; left as is, rope_index would
+    # always take the TTI-ON branch and raise IndexError for data without time markers.
     if tti_mode == "off":
         if getattr(model.config, "time_token_id_range", None) is not None:
             print(f"[GDPO] tti_mode=off → clearing model.config.time_token_id_range "
@@ -1172,53 +1168,52 @@ def load_model_and_tokenizer(model_path, model_base, tti_mode="off"):
         if getattr(model.config, "time_marker_token_len", None):
             model.config.time_marker_token_len = None
     else:
-        # tti_mode == "on": 경로 B(머지 모델)는 config 에 time_token_id_range 가 없을 수 있음
-        # (SFT 머지 과정에서 유실). 데이터(special_token 마커)와 일치시키려면 토크나이저에서
-        # 복원해 모델 config 에 세팅 → generation 시 모델 내부 rope 도 ON(fixed-position) 분기를
-        # 타게 함. (경로 A 의 time-token base 는 이미 들어있어 이 분기 무영향.)
+        # tti_mode == 'on': a merged model (path B) may lack time_token_id_range in its config
+        # (lost when merging the SFT model). Restore it from the tokenizer so that it matches the
+        # data (special_token markers) and the model's rope also takes the ON (fixed-position) branch
+        # during generation. (The time-token base of path A already has it.)
         if getattr(model.config, "time_token_id_range", None) is None:
             t0 = tokenizer.convert_tokens_to_ids("<t0>")
             tdot = tokenizer.convert_tokens_to_ids("<tdot>")
             if isinstance(t0, int) and isinstance(tdot, int) and t0 >= 0 and tdot >= 0:
                 model.config.time_token_id_range = (min(t0, tdot), max(t0, tdot))
                 model.config.time_marker_token_len = 5
-                print(f"[GDPO] tti_mode=on + config 에 time_token_id_range 없음(경로B 머지모델) "
-                      f"→ 토크나이저에서 복원: {model.config.time_token_id_range}, marker_len=5")
+                print(f"[GDPO] tti_mode=on but the config has no time_token_id_range (merged model, path B) "
+                      f"-> restored from the tokenizer: {model.config.time_token_id_range}, marker_len=5")
             else:
-                print("[GDPO] ⚠️ tti_mode=on 인데 <t0>/<tdot> 토큰 ID 확인 실패 "
-                      "→ time_token_id_range 미설정 (desync 유지)")
-    # [TTI-DBG] ① 최종 model.config 상태 확인 (ON 모드는 기존에 미출력이었음)
+                print("[GDPO] WARNING: tti_mode=on but the <t0>/<tdot> token ids could not be resolved "
+                      "-> time_token_id_range not set (config/data stay out of sync)")
+    # [TTI-DBG] final model.config state
     _tti_dbg(f"① load_model: tti_mode={tti_mode} | "
              f"model.config.time_token_id_range={getattr(model.config, 'time_token_id_range', None)} | "
              f"time_marker_token_len={getattr(model.config, 'time_marker_token_len', None)}")
-    # resize_token_embeddings 호출 금지 — base는 vocab_size=152064 (Qwen 패딩 포함)로
-    # 유지해야 SFT adapter의 modules_to_save(embed_tokens/lm_head, 152064 rows)와 맞음.
+    # Do not call resize_token_embeddings: the base keeps vocab_size=152064 (Qwen padding) to
+    # match the SFT adapter's modules_to_save (embed_tokens/lm_head, 152064 rows).
     model = model.to(torch.bfloat16)
 
-    # LoRA 로드 — audio.layers 분리 필요 (SFT train_qwen.py와 동일 패턴)
-    # adapter_config의 base_model_name_or_path는 무시됨 (이미 로드된 model 객체를 넘기므로).
-    # modules_to_save=[model.embed_tokens, lm_head]는 PeftModel 로딩 시 자동 복원되므로
-    # time token 임베딩 수동 복원 불필요.
+    # Load LoRA: audio.layers must be detached (same pattern as SFT train_qwen.py).
+    # The adapter_config's base_model_name_or_path is ignored (the loaded model object is passed).
+    # modules_to_save=[model.embed_tokens, lm_head] are restored by PeftModel loading,
+    # so the time-token embeddings need no manual restore.
     adapter_config_path = os.path.join(model_path, "adapter_config.json")
     adapter_loaded = os.path.isdir(model_path) and os.path.exists(adapter_config_path)
     if adapter_loaded:
-        # ── (경로 A) adapter 이어학습 : SFT LoRA adapter 를 base 위에 로드 ──
+        # -- (path A) continue the SFT LoRA adapter on top of the base --
         print(f"[GDPO] Loading LoRA adapter: {model_path}")
         audio_layers = model.audio.layers
         del model.audio.layers
         model = PeftModel.from_pretrained(model, model_path, is_trainable=True)
         model.model.audio.layers = audio_layers
 
-        # ── RL 학습대상 제한 (adapter 이어학습 경로 전용) ──────────────────
-        # puvalor 계열 어댑터는 LoRA(q,k,v,o) + visual.merger + audio.qformer/q_tokens/
-        # audio_proj + embed_tokens + lm_head 까지 전부 trainable 로 로드된다. 하지만
-        # RL(GRPO)은 단일 LR(5e-6) 이라 SFT 의 per-module LR(merger 1e-5, audio 2e-5 등)을
-        # 재현할 수 없고, noisy reward gradient 로 aligner 까지 흔들면 SFT 가 만든 멀티모달
-        # grounding 이 손상될 위험이 크다. → policy 중심으로 학습대상을 제한:
-        #   학습: LoRA(q,k,v) + embed_tokens + lm_head
+        # -- restrict RL trainable modules (path A only) --
+        # SFT adapters load LoRA(q,k,v,o) + visual.merger + audio.qformer/q_tokens/audio_proj +
+        # embed_tokens + lm_head as trainable. RL uses a single LR and cannot reproduce the
+        # per-module SFT LRs, and noisy reward gradients on the aligners risk damaging the
+        # multimodal grounding learned in SFT. So training is restricted to the policy:
+        #   trained: LoRA(q,k,v) + embed_tokens + lm_head
         #   freeze: o_proj LoRA, visual.merger, audio.qformer/q_tokens/audio_proj
-        _KEEP_LORA = ("q_proj", "k_proj", "v_proj")   # o_proj 제외
-        _KEEP_SAVE = ("embed_tokens", "lm_head")      # merger / audio.* 제외
+        _KEEP_LORA = ("q_proj", "k_proj", "v_proj")  # o_proj excluded
+        _KEEP_SAVE = ("embed_tokens", "lm_head")  # merger / audio.* excluded
         _kept_names, _frozen_names = [], []
         for n, p in model.named_parameters():
             if not p.requires_grad:
@@ -1238,31 +1233,31 @@ def load_model_and_tokenizer(model_path, model_base, tti_mode="off"):
             return sorted({m for n in names for m in tags if m in n})
 
         _n_train = sum(p.numel() for p in model.parameters() if p.requires_grad)
-        print(f"[GDPO] RL trainable 제한 → 학습 모듈: {_mod_summary(_kept_names)}")
-        print(f"[GDPO]                      freeze 모듈: {_mod_summary(_frozen_names)}")
+        print(f"[GDPO] RL trainable modules restricted -> trained: {_mod_summary(_kept_names)}")
+        print(f"[GDPO]                                   frozen:  {_mod_summary(_frozen_names)}")
         print(f"[GDPO] trainable params: {_n_train/1e6:.1f}M")
         # ─────────────────────────────────────────────────────────────────
     else:
-        # ── (경로 B) fresh LoRA : 머지 모델을 그대로 두고 main() 의 config.lora 로
-        #    새 LoRA 를 씌운다. get_peft_model 이 비-LoRA 파라미터를 자동 freeze 하므로
-        #    여기서 별도 trainable 제한 불필요(embed/lm_head 도 자동 freeze). ──
-        print("[GDPO] No LoRA adapter found → fresh RL LoRA 경로 "
-              "(main 의 config.lora 로 새 LoRA 적용 예정)")
+        # -- (path B) fresh LoRA: keep the merged model and add a new LoRA from config.lora in main().
+        #    get_peft_model freezes all non-LoRA parameters automatically, so no extra
+        #    restriction is needed here (embed/lm_head are frozen too). --
+        print("[GDPO] No LoRA adapter found -> fresh RL LoRA path "
+              "(a new LoRA from config.lora is applied in main)")
 
-    # gradient_checkpointing + 얼린 base 조합에서 grad가 흐르게 하려면
-    # 얼린 embedding 출력에 requires_grad=True가 필요.
+    # With gradient checkpointing and a frozen base, the frozen embedding outputs
+    # need requires_grad=True for gradients to flow.
     if hasattr(model, "enable_input_require_grads"):
         model.enable_input_require_grads()
 
-    # HF generate의 _validate_model_kwargs 우회 (monkey-patch).
-    # PEFT(LoraModel) wrapping 때문에 HF가 forward 시그니처를 inspect할 때
-    # `*args, **kwargs`만 보여서 pixel_values_videos / video_grid_thw /
-    # audio_feature / audio_lengths를 "unused"로 false-positive 판정함.
-    # 실제로는 base_model.forward / prepare_inputs_for_generation이 정상 처리함.
+    # Bypass HF generate's _validate_model_kwargs (monkey patch).
+    # With the PEFT (LoraModel) wrapper HF only sees `*args, **kwargs` when inspecting the
+    # forward signature and wrongly reports pixel_values_videos / video_grid_thw /
+    # audio_feature / audio_lengths as "unused". base_model.forward /
+    # prepare_inputs_for_generation handle them correctly.
     base = model.get_base_model() if hasattr(model, "get_base_model") else model
     base._validate_model_kwargs = lambda *a, **kw: None
 
-    # tokenizer 연결
+    # attach the tokenizer
     if not hasattr(model, "tokenizer"):
         model.tokenizer = tokenizer
 
@@ -1271,7 +1266,7 @@ def load_model_and_tokenizer(model_path, model_base, tti_mode="off"):
 
 
 # ============================================================
-# Config 로딩
+# Config loading
 # ============================================================
 
 def load_config(config_path: str) -> dict:
@@ -1284,13 +1279,13 @@ def load_config(config_path: str) -> dict:
 
 
 # ============================================================
-# 리워드 함수
+# Reward functions
 # ============================================================
 
 def make_reward_functions(specs):
-    """load_reward_module 의 spec 리스트 [(name, fn, needs_gt), ...] → trainer 용 콜러블 리스트.
-    needs_gt=False(format) 는 completion 만, True(iou/timestamp/modality) 는 (completion, gt) 로 호출.
-    채널 수 가변 — 비-CoT(2개)·CoT(4개) 동일 경로."""
+    """Spec list [(name, fn, needs_gt), ...] from load_reward_module -> callables for the trainer.
+    needs_gt=False (format) is called with the completion only, True with (completion, gt).
+    Works for any number of channels."""
     out = []
     for name, fn, needs_gt in specs:
         if needs_gt:
@@ -1306,16 +1301,16 @@ def make_reward_functions(specs):
 
 
 # ============================================================
-# [VAL] Validation-set 평가 (in-trainer, reload 없음) — toggle 가능
+# [VAL] validation-set evaluation inside the trainer (no reload), optional
 #
-# checkpoint selection 용. val.enabled(또는 --val_path) 일 때만 동작; 없으면 기존 동작 동일.
-# save_steps 마다(on_save) 현재 메모리 정책으로 val 프롬프트를 greedy 생성 →
-#   segment mIoU(pairwise) + pairwise F1_avg(θ=0.1/0.3/0.5/0.7/0.9) → 둘 평균(combined).
-# 지표 정의는 eval/eval_miou.py 의 pairwise 블록과 1:1 동일하게 복제.
-# val_metrics.jsonl 에 step별 append + wandb 로깅. 종료 후 select_best_ckpt.py 로 best 선택.
+# For checkpoint selection; only active with val.enabled (or --val_path), otherwise no change.
+# At every save step (on_save), greedy-generate the val prompts with the current policy ->
+#   sample mIoU + pairwise F1_avg (θ = 0.1/0.3/0.5/0.7/0.9) -> their mean (combined).
+# The metric definitions replicate eval/eval_miou.py.
+# Appended per step to val_metrics.jsonl and logged to W&B.
 # ============================================================
 VAL_THRESHOLDS = [0.1, 0.3, 0.5, 0.7, 0.9]
-# 시간토큰 "From <t..> to <t..>" 파싱 (eval_miou.py 와 동일 정규식/디코드)
+# Time-token "From <t..> to <t..>" parsing (same regex/decoding as eval_miou.py)
 _VAL_TOKTIME = r"(?:<t\d>)+(?:<tdot>(?:<t\d>)+)?"
 _VAL_TOK_SEG = re.compile(rf"({_VAL_TOKTIME})\s*(?:to|-|–|—|~)\s*({_VAL_TOKTIME})", re.IGNORECASE)
 
@@ -1350,7 +1345,7 @@ def _val_parse_tokens(text, max_time):
 
 
 def _val_extract_answer_scope(text):
-    """CoT: <answer>...</answer> 안만 (없으면 전체)."""
+    """CoT: only the content of <answer>...</answer> (the whole text if absent)."""
     spans = re.findall(r"<answer>(.*?)</answer>", text or "", re.DOTALL | re.IGNORECASE)
     return " ".join(spans) if spans else (text or "")
 
@@ -1367,7 +1362,7 @@ def _val_best_iou(seg, others):
 
 
 def _val_merge(segs):
-    """겹치는 구간들을 disjoint union 으로 병합."""
+    """Merge overlapping intervals into a disjoint union."""
     if not segs:
         return []
     s = sorted([[float(a), float(b)] for a, b in segs], key=lambda x: x[0])
@@ -1385,7 +1380,7 @@ def _val_total(segs):
 
 
 def _val_sample_iou(gt, pred):
-    """샘플당 1개 IoU (R-AVST all_iou): 전체 GT merge vs 전체 pred merge inter/union."""
+    """One IoU per sample (R-AVST all_iou): merged GT vs merged pred, inter/union."""
     g, p = _val_merge(gt), _val_merge(pred)
     if not g and not p:
         return 0.0
@@ -1406,16 +1401,16 @@ def _val_frac_ge(arr, th):
 
 
 def compute_val_metrics(records):
-    """records: [{"gt": [[s,e]..], "pred": [[s,e]..]}]  → eval_miou.py 정의와 동일.
+    """records: [{"gt": [[s,e]..], "pred": [[s,e]..]}] -> same definitions as eval_miou.py.
 
-    test 와 지표를 맞추기 위해 IoU 는 sample 법, F1 은 pairwise 법을 쓴다.
-      sample_miou  = 100 * mean_over_samples( all_iou(merge(gt), merge(pred)) )   ← eval_miou sample 블록
-      pairwise_miou= 100 * mean_over_all_GT_segs( best_iou(g, pred) )             ← (참고용)
-      f1_avg       = mean_over_θ( 2PR/(P+R) ),  R/P = pairwise best_iou≥θ frac    ← eval_miou pairwise 블록
-      combined     = (sample_miou + f1_avg) / 2          ← checkpoint selection 기준
+    To match the test metrics, IoU uses the sample method and F1 the pairwise method.
+        sample_miou  = 100 * mean_over_samples( all_iou(merge(gt), merge(pred)) )   <- eval_miou sample block
+        pairwise_miou= 100 * mean_over_all_GT_segs( best_iou(g, pred) )             <- (reference)
+        f1_avg       = mean_over_θ( 2PR/(P+R) ),  R/P = pairwise best_iou>=θ frac   <- eval_miou pairwise block
+        combined     = (sample_miou + f1_avg) / 2          <- checkpoint selection criterion
 
-    호환: select_best_ckpt.py 가 읽는 키(seg_miou/f1_avg/combined)는 유지하되,
-          seg_miou 는 이제 **sample IoU** 값을 담는다(sample_miou 와 동일). pairwise 값은 pairwise_miou 로 별도 보존.
+    Key names seg_miou/f1_avg/combined are kept for compatibility; seg_miou holds the
+          sample IoU (same as sample_miou). The pairwise value is kept as pairwise_miou.
     """
     gt_iou_all, pred_iou_all, sample_ious = [], [], []
     for r in records:
@@ -1437,7 +1432,7 @@ def compute_val_metrics(records):
     f1_avg = _val_mean(list(f1.values()))
     n_parse_ok = sum(1 for r in records if r["pred"])
     return {
-        "seg_miou": round(sample_miou, 4),      # ← sample IoU (select_best 호환 키)
+        "seg_miou": round(sample_miou, 4),      # sample IoU (compatibility key)
         "sample_miou": round(sample_miou, 4),
         "pairwise_miou": round(pairwise_miou, 4),
         "f1_avg": round(f1_avg, 4),
@@ -1452,7 +1447,7 @@ def compute_val_metrics(records):
 
 @torch.no_grad()
 def _val_greedy_generate(trainer, inputs, max_new_tokens):
-    """train 과 동일 멀티모달 입력으로 1샘플 greedy 생성 → completion 텍스트(특수토큰 유지)."""
+    """Greedy-generate one sample with the same multimodal inputs as training -> completion text (special tokens kept)."""
     model = trainer.model
     acc = trainer.accelerator
     device = acc.device
@@ -1479,14 +1474,14 @@ def _val_greedy_generate(trainer, inputs, max_new_tokens):
     if af is not None:
         af = af.to(device=device, dtype=torch.bfloat16)
     al = inputs.get("audio_lengths", None)
-    # [VAL-FIX] 비디오 시간축 rope 스케일. 누락 시 time-token grounding 이 어긋나
-    #   eval 추론경로(train_qwen.py: **inputs 로 전달) 대비 mIoU 가 ~절반으로 깎인다.
+    # Video time-axis RoPE scale. Without it time-token grounding is misaligned and the mIoU
+    #   drops to about half compared with the eval inference path (train_qwen.py passes **inputs).
     spg = inputs.get("second_per_grid_ts", None)
     if spg is not None and hasattr(spg, "to"):
         spg = spg.to(device)
 
     prompt_length = prompt_ids.size(1)
-    # generate 동안 gradient checkpointing 비활성화 (rollout 과 동일 패턴)
+    # Disable gradient checkpointing during generate (same pattern as the rollout)
     for _m in model.modules():
         if hasattr(_m, "gradient_checkpointing"):
             _m.gradient_checkpointing = False
@@ -1495,7 +1490,7 @@ def _val_greedy_generate(trainer, inputs, max_new_tokens):
         "input_ids": prompt_ids,
         "attention_mask": prompt_mask,
         "max_new_tokens": max_new_tokens,
-        "do_sample": False,        # greedy (deterministic) — selection 재현성
+        "do_sample": False,        # greedy (deterministic) for reproducible selection
         "num_beams": 1,
         "repetition_penalty": 1.0,
     }
@@ -1517,14 +1512,14 @@ def _val_greedy_generate(trainer, inputs, max_new_tokens):
             if hasattr(unwrapped_model, "get_base_model")
             else unwrapped_model
         )
-        # greedy(do_sample=False)인데 model.generation_config 에 temperature/top_p/top_k 가
-        # 남아 매 샘플 UserWarning 이 뜬다(무해하지만 로그 스팸). 그 경고만 억제.
+        # Greedy (do_sample=False) but model.generation_config still has temperature/top_p/top_k,
+        # which warns on every sample (harmless but noisy). Suppress only that warning.
         with _warnings.catch_warnings():
             _warnings.filterwarnings("ignore", message=r"`do_sample` is set to `False`")
             gen_ids = raw_model.generate(**gen_kwargs)
     gen_ids = gen_ids[:, prompt_length:]
 
-    # gradient checkpointing 복구 (use_reentrant=False)
+    # restore gradient checkpointing (use_reentrant=False)
     import functools as _ft
     from torch.utils.checkpoint import checkpoint as _ckpt
     _gcf = _ft.partial(_ckpt, use_reentrant=False)
@@ -1537,11 +1532,11 @@ def _val_greedy_generate(trainer, inputs, max_new_tokens):
 
 
 class ValEvalCallback(transformers.TrainerCallback):
-    """save_steps 마다 여러 val 셋으로 greedy 평가 → val_metrics.jsonl + wandb.
+    """Greedy evaluation on several val sets at every save step -> val_metrics.jsonl + W&B.
 
-    각 세트를 개별로 찍고(val_<name>/*), 세트별 지표의 '평균'을 top-level
-    combined/seg_miou/f1_avg 로 저장한다 → select_best_ckpt.py 가 평균 기준으로
-    best step 을 고른다(세트 1개면 기존과 동일 동작). 학습은 종료시키지 않음.
+    Each set is logged separately (val_<name>/*); the mean of the per-set metrics is stored
+    as top-level combined/seg_miou/f1_avg (one set: the same as before).
+    Training is never stopped.
     """
 
     def __init__(self, trainer, val_sets, out_dir,
@@ -1553,8 +1548,8 @@ class ValEvalCallback(transformers.TrainerCallback):
         self.max_time = float(max_time)
         self.natural = bool(natural)
         self.jsonl_path = os.path.join(out_dir, "val_metrics.jsonl")
-        # 각 세트의 GT — LazySupervisedDataset 가 list_data_dict 를 셔플하므로(dataset.py),
-        # 셔플된 순서 그대로 gt_segments 를 읽어 예측↔GT 정렬을 보장.
+        # GT of each set: LazySupervisedDataset shuffles list_data_dict (dataset.py), so read
+        # gt_segments in the shuffled order to keep predictions and GT aligned.
         self.val_sets = []
         for name, ds in val_sets:
             gt_list = []
@@ -1562,14 +1557,14 @@ class ValEvalCallback(transformers.TrainerCallback):
                 segs = x.get("gt_segments") or []
                 gt_list.append([[float(s), float(e)] for s, e in segs])
             assert len(gt_list) == len(ds), (
-                f"val[{name}] GT({len(gt_list)}) != dataset({len(ds)}) — 순서/내용 불일치")
+                f"val[{name}] GT({len(gt_list)}) != dataset({len(ds)}): order/content mismatch")
             self.val_sets.append({"name": name, "ds": ds, "gt": gt_list})
 
     def on_save(self, args, state, control, **kwargs):
         self._run(state)
 
     def _eval_one(self, ds, gt_list, acc, world, rank):
-        """한 val 세트를 샤딩 greedy 평가 → (main process) metric dict / (그 외) None."""
+        """Sharded greedy evaluation of one val set -> metric dict (main process) / None (others)."""
         from accelerate.utils import gather_object
         trainer = self.trainer
         local = []
@@ -1582,7 +1577,7 @@ class ValEvalCallback(transformers.TrainerCallback):
             scope = _val_extract_answer_scope(text) if self.natural else text
             pred = _val_parse_tokens(scope, self.max_time)
             local.append({"idx": i, "gt": gt_list[i], "pred": pred})
-        gathered = gather_object(local)   # collective — 모든 rank 가 호출해야 함
+        gathered = gather_object(local)   # collective: every rank must call it
         if not acc.is_main_process:
             return None
         seen, recs = set(), []
@@ -1621,7 +1616,7 @@ class ValEvalCallback(transformers.TrainerCallback):
         def _avg(key):
             return sum(per_set[n][key] for n in names) / len(names)
 
-        # top-level = 세트 평균 (select_best_ckpt.py 호환 키)
+        # top level = mean over sets
         rec = {
             "step": step,
             "combined": round(_avg("combined"), 4),
@@ -1656,7 +1651,7 @@ class ValEvalCallback(transformers.TrainerCallback):
         try:
             trainer.log(log)
         except Exception as _e:
-            print(f"[VAL] wandb log 스킵: {_e}")
+            print(f"[VAL] wandb log skipped: {_e}")
 
 
 # ============================================================
@@ -1671,33 +1666,31 @@ def main():
     parser.add_argument("--dataset_path", default=None)
     parser.add_argument("--output_dir", default=None)
     parser.add_argument("--max_steps", type=int, default=None,
-                        help="smoke-test 등에서 step 수 제한. >0이면 num_train_epochs 무시.")
+                        help="limit the number of steps (e.g. smoke tests). >0 overrides num_train_epochs.")
     parser.add_argument("--run_name", type=str, default=None,
-                        help="wandb/tracker run name 재정의. 없으면 config.logging.run_name 사용.")
+                        help="override the W&B/tracker run name (default: config.logging.run_name).")
     parser.add_argument("--gradient_accumulation_steps", type=int, default=None,
-                        help="grad accum step 수. 없으면 config.training.gradient_accumulation_steps. "
-                             "GPU 수가 달라졌을 때 effective batch 를 맞추는 용도 — "
-                             "eff batch = grad_accum × num_gpu 이고 train sampler 의 "
-                             "block_size 도 같은 곱이라, 2GPU×accum2 와 1GPU×accum4 는 "
-                             "둘 다 eff batch 4 / block_size 4 가 된다.")
+                        help="gradient accumulation steps (default: config.training.gradient_accumulation_steps). "
+                             "Use it to keep the effective batch when the GPU count changes: "
+                             "effective batch = grad_accum x num_gpu, and the train sampler's "
+                             "block_size is the same product, so 2 GPUs x accum 2 and 1 GPU x accum 4 "
+                             "both give effective batch 4 / block_size 4.")
     parser.add_argument("--seed", type=int, default=None,
-                        help="학습 시드(LoRA fresh init + 데이터 순서 + 샘플링). 멀티시드 복제용. "
-                             "없으면 config.training.seed(기본 2024). "
-                             "학습 데이터 파일 자체는 바뀌지 않는다 — 데이터 draw 는 "
-                             "data/train/build_unpucha_v2.py 의 SEED 소관.")
+                        help="training seed (fresh LoRA init + data order + sampling). "
+                             "Default: config.training.seed (2024). "
+                             "The training data file itself does not change.")
     parser.add_argument("--tti_mode", type=str, default=None, choices=[None, "off", "on"],
-                        help="TTI 모드. off=time_token_id_range 무시 / on=base config 그대로. "
-                             "기본값은 config.model.tti_mode 또는 'off'.")
+                        help="TTI mode. off = ignore time_token_id_range / on = keep the base config. "
+                             "Default: config.model.tti_mode or 'off'.")
     parser.add_argument("--reward_module", type=str, default=None,
-                        help="reward 함수 모듈명. reward_functions(기본, iou=MUSEG r_M) | "
-                             "reward_functions_rM_fp(iou=r_M-0.2*FP). "
-                             "없으면 config.reward.module 또는 reward_functions.")
+                        help="reward function module (paper: reward_functions_rM_sep3). "
+                             "Default: config.reward.module or reward_functions.")
     parser.add_argument("--resume_from_checkpoint", type=str, default=None,
-                        help="'True'=output_dir 내 최신 체크포인트 자동 재개, 또는 체크포인트 경로. "
-                             "미지정=처음부터.")
+                        help="'True' = resume from the latest checkpoint in output_dir, or a checkpoint path. "
+                             "Unset = start from scratch.")
     parser.add_argument("--val_path", type=str, default=None,
-                        help="[VAL] validation JSON. 지정 시 save_steps 마다 greedy 평가→val_metrics.jsonl. "
-                             "없으면 config.val.dataset_path/val.enabled 따름(기본 OFF).")
+                        help="[VAL] validation JSON; evaluated greedily at every save step -> val_metrics.jsonl. "
+                             "Default: config.val.dataset_path / val.enabled (off).")
     cli = parser.parse_args()
 
     cfg = load_config(cli.config) if cli.config else {}
@@ -1719,17 +1712,17 @@ def main():
     output_dir = _get(cli.output_dir, "training", "output_dir", default="output/gdpo_vs2plus")
 
     if model_path is None or dataset_path is None:
-        parser.error("--model_path와 --dataset_path 필수")
+        parser.error("--model_path and --dataset_path are required")
 
-    # ── CLI 인자 + 실행 환경 기록 (train.log 처럼 저장경로에 별도 보존) ──
-    # rank-0 에서만 기록. output_dir 가 아직 없을 수 있으니 생성.
-    # 무엇으로 돌린 런인지(주입한 인자 + 실제 커맨드라인) 사후 재현용.
+    # -- record CLI arguments and environment next to the outputs (like train.log) --
+    # rank 0 only; output_dir may not exist yet.
+    # Records how the run was launched (arguments + actual command line) for reproduction.
     if _is_rank0():
         os.makedirs(output_dir, exist_ok=True)
         _args_record = {
-            "cli_args": vars(cli),                       # 파싱된 argparse 인자
-            "argv": sys.argv,                            # 실제 커맨드라인 (python ... --config ...)
-            "resolved": {                                # config 와 병합된 최종값(일부)
+            "cli_args": vars(cli),                       # parsed argparse arguments
+            "argv": sys.argv,                            # actual command line
+            "resolved": {                                # final values merged with the config (subset)
                 "model_path": model_path,
                 "model_base": model_base,
                 "dataset_path": dataset_path,
@@ -1737,7 +1730,7 @@ def main():
             },
             "cwd": os.getcwd(),
         }
-        # 기존 파일이 있으면(=resume 등 재실행) 덮어쓰지 않고 번호를 붙여 이력 보존.
+        # If the file exists (resume / rerun), keep the history by numbering instead of overwriting.
         #   cli_args.json → cli_args.1.json → cli_args.2.json ...
         _args_path = os.path.join(output_dir, "cli_args.json")
         if os.path.exists(_args_path):
@@ -1747,32 +1740,31 @@ def main():
             _args_path = os.path.join(output_dir, f"cli_args.{_n}.json")
         with open(_args_path, "w", encoding="utf-8") as _f:
             json.dump(_args_record, _f, ensure_ascii=False, indent=2)
-        print(f"[GDPO] CLI 인자 기록: {_args_path}")
+        print(f"[GDPO] CLI arguments saved: {_args_path}")
 
-    # GDPO 파라미터
+    # GDPO parameters
     num_generations = _get(None, "gdpo", "num_generations", default=8)
     max_completion_length = _get(None, "gdpo", "max_completion_length", default=512)
     beta = _get(None, "gdpo", "beta", default=0.04)
     reward_weights = _get(None, "gdpo", "reward_weights", default=[1.0, 1.0, 1.0])
-    # temperature 를 config 에서 읽어 GRPOConfig 로 전달.
+    # read temperature from config and pass it to GRPOConfig.
     temperature = float(_get(None, "gdpo", "temperature", default=1.0))
 
     # ── DAPO clip-higher (config: clip.*) ──────────────────────────────────
-    #   enabled : clipped surrogate 경로 사용 (이 trainer 의 기본 동작).
-    #   epsilon / epsilon_high : DAPO 권장값 0.2 / 0.28 (ε_high>ε_low = clip-higher).
-    #   num_iterations(μ) : 한 rollout 을 μ 번 정책 업데이트에 재사용. μ>1 이라야 r≠1 →
-    #       clip 이 실제 binding. μ=1 이면 r≈1 = 순수 GDPO 와 수치 동일.
-    #       ⚠️ μ>1 은 grad_accum=1 필수(아래 경고 참고).
+    #   enabled : use the clipped surrogate path (default behaviour of this trainer).
+    #   epsilon / epsilon_high : DAPO values 0.2 / 0.28 (eps_high > eps_low = clip-higher).
+    #   num_iterations (mu) : reuse one rollout for mu policy updates. Only mu > 1 gives r != 1,
+    #       so the clip binds. mu=1 gives r ~ 1, numerically the same as plain GDPO.
     clip_enabled = bool(_get(None, "clip", "enabled", default=True))
     epsilon_low = float(_get(None, "clip", "epsilon", default=0.2))
     epsilon_high = float(_get(None, "clip", "epsilon_high", default=0.28))
     num_iterations = int(_get(None, "clip", "num_iterations", default=1))
 
-    # [sep2] multi-segment(GT>=2) prompt advantage 가중치 (config: gdpo.multi_seg_weight)
-    #   통합 기본 1.0(=off, 기존 GDPO 동일). >1 이면 GT>=2 prompt advantage ×w → single prior(4:6) 상쇄.
+    # Advantage weight for multi-segment (GT >= 2) prompts (config: gdpo.multi_seg_weight)
+    #   Default 1.0 (= off). > 1 scales GT >= 2 prompt advantages by w to offset the single-segment prior.
     multi_seg_weight = float(_get(None, "gdpo", "multi_seg_weight", default=1.0))
 
-    # 학습 파라미터
+    # training parameters
     num_epochs = _get(None, "training", "num_train_epochs", default=1)
     batch_size = _get(None, "training", "per_device_train_batch_size", default=1)
     grad_accum = _get(cli.gradient_accumulation_steps,
@@ -1787,44 +1779,44 @@ def main():
     report_to = _get(None, "logging", "report_to", default="tensorboard")
     run_name = _get(cli.run_name, "logging", "run_name", default=os.path.basename(output_dir))
 
-    # TTI 모드 결정 (cli > config.model.tti_mode > "off")
+    # TTI mode (cli > config.model.tti_mode > 'off')
     tti_mode = _get(cli.tti_mode, "model", "tti_mode", default="off")
-    # tti_mode → 데이터셋 입력 마커 포맷 매핑.
-    #   on  : special_token 마커를 video/audio 청크 사이에 인터리빙 (rope ON 분기와 짝)
-    #   off : 마커 미삽입 (rope OFF 분기와 짝)
-    # 모델 config(time_token_id_range) 와 데이터셋(tti_time_format) 양쪽이 일치해야 함.
+    # tti_mode -> input marker format of the dataset.
+    #   on  : interleave special_token markers between video/audio chunks (pairs with the rope ON branch)
+    #   off : no markers (pairs with the rope OFF branch)
+    # The model config (time_token_id_range) and the dataset (tti_time_format) must agree.
     tti_time_format = "special_token" if tti_mode == "on" else "off"
 
     # Model
-    # 모델 로드/LoRA fresh init 보다 먼저 시딩 (Trainer 내부 set_seed 는 get_peft_model 이후라 늦음).
-    # [SEED] 멀티시드 복제 시 사후 대조용 — 시드와 그 출처를 로그에 남긴다.
-    #   시드는 RL 단계만 바꾼다: LoRA fresh init + 데이터 순서 + 샘플링.
-    #   SFT(model_path/model_base)와 학습 데이터 파일은 시드와 무관하게 동일하다.
+    # Seed before model loading / fresh LoRA init (the Trainer's set_seed runs after get_peft_model, too late).
+    # [SEED] log the seed and its source.
+    #   The seed only affects the RL stage: fresh LoRA init + data order + sampling.
+    #   The SFT model and the training data files do not depend on it.
     print(f"[SEED] training seed = {seed} "
           f"(source={'cli --seed' if cli.seed is not None else 'config.training.seed'})",
           flush=True)
     transformers.set_seed(seed)
     model, tokenizer = load_model_and_tokenizer(model_path, model_base, tti_mode=tti_mode)
 
-    # ── PEFT — RL용 fresh LoRA (경로 B) ──────────────────────────────
-    # model_path 가 SFT-머지 모델(adapter_config.json 없음)일 때, SFT 어댑터를 다시
-    # 얹지 않고 머지 weight 위에 새 LoRA 를 만들어 RL 학습한다. ref 모델은 GDPOTrainer 가
-    # LoRA disable 로 처리(=SFT 정책).  config.lora.enabled=true 일 때만 활성.
-    #   ⚠️ adapter 이어학습(경로 A)을 쓸 거면 config 의 lora.enabled 를 false 로 둘 것
-    #      (이미 PeftModel 인 model 에 또 LoRA 를 씌우면 이중 적용됨).
+    # -- PEFT: fresh RL LoRA (path B) --
+    # When model_path is a merged SFT model (no adapter_config.json), a new LoRA is created on
+    # the merged weights instead of re-attaching the SFT adapter. GDPOTrainer uses the disabled
+    # LoRA as reference (= SFT policy). Only active with config.lora.enabled=true.
+    #   For path A (continuing an adapter), set lora.enabled to false
+    #   (adding a LoRA to a model that is already a PeftModel would apply it twice).
     peft_config = None
     if _get(None, "lora", "enabled", default=False):
         if isinstance(model, PeftModel):
-            print("[GDPO] ⚠️ 이미 LoRA adapter 가 로드된 모델인데 config.lora.enabled=true "
-                  "→ fresh LoRA 적용을 건너뜀 (이중 적용 방지). adapter 이어학습으로 진행.")
+            print("[GDPO] WARNING: the model already has a LoRA adapter but config.lora.enabled=true "
+                  "-> skipping the fresh LoRA (avoids applying it twice); continuing the adapter.")
         else:
             lora_r = int(_get(None, "lora", "r", default=32))
             lora_alpha = int(_get(None, "lora", "lora_alpha", default=64))
             lora_dropout = float(_get(None, "lora", "lora_dropout", default=0.05))
-            # LLM 블록 타깃 suffix — config(lora.target_modules)로 오버라이드 가능.
-            #   기본: attention(q/k/v/o_proj)만 (audio/visual 제외, SFT와 동일 범위).
-            #   예) MLP까지 열려면 config 에 target_modules:[q_proj,k_proj,v_proj,o_proj,
-            #       gate_proj,up_proj,down_proj]. model.layers.* 한정은 그대로 유지.
+            # LLM block target suffixes; overridable with config lora.target_modules.
+            #   Default: attention only (q/k/v/o_proj), no audio/visual modules.
+            #   e.g. to include the MLP: target_modules: [q_proj,k_proj,v_proj,o_proj,
+            #       gate_proj,up_proj,down_proj] (the paper setting). Limited to model.layers.*.
             _tm_suffixes = tuple(_get(None, "lora", "target_modules",
                                       default=["q_proj", "k_proj", "v_proj", "o_proj"]))
             target_modules = [
@@ -1832,11 +1824,10 @@ def main():
                 if n.startswith("model.layers.")
                 and n.split(".")[-1] in _tm_suffixes
             ]
-            # [sep2] modules_to_save 를 embed_tokens / lm_head 개별 토글로 분리.
-            #   embed_tokens / lm_head 는 modules_to_save → full trainable copy.
-            #   ref(=disable_adapter)는 original(=SFT 머지본) 을 쓰므로 KL 기준은 SFT 정책 유지.
-            #   통합 기본: 둘 다 false → q/k/v/o LoRA 만. 예) lm_head 만 학습하려면
-            #   train_embeddings:false + train_lm_head:true (config_*sep*.yaml 참고).
+            # modules_to_save: embed_tokens / lm_head have separate toggles.
+            #   Enabled modules get a full trainable copy (modules_to_save).
+            #   The reference (disable_adapter) uses the originals (= merged SFT model), so the KL anchor stays the SFT policy.
+            #   Default: both false -> LoRA only.
             train_emb = bool(_get(None, "lora", "train_embeddings", default=False))
             train_lm_head = bool(_get(None, "lora", "train_lm_head", default=False))
             modules_to_save = [m for m, on in (("embed_tokens", train_emb),
@@ -1854,7 +1845,7 @@ def main():
                   f"#target_modules={len(target_modules)} (suffixes={list(_tm_suffixes)}), "
                   f"modules_to_save={modules_to_save}")
 
-    # Dataset — VS2+ LazySupervisedDataset 사용
+    # Dataset: video-SALMONN 2+ LazySupervisedDataset
     print(f"[GDPO] Loading dataset from {dataset_path}")
     from dataclasses import dataclass
     from qwenvl.data.image_processing_qwen2_vl_fast import Qwen2VLImageProcessorFast
@@ -1865,45 +1856,45 @@ def main():
     class GDPODataArgs:
         dataset_use: str = ""
         model_type: str = "qwen2.5vl"
-        video_max_frames: int = 128         #  SFT 이상값 
-        video_min_frames: int = 64          # SFT 이상값
-        base_interval: float = 0.2          # SFT 이상값 (fps5). 이전 2(fps0.5)에서 변경
-        max_pixels: int = 176400            # SFT와 동일 (28*28*225)
-        min_pixels: int = 784               # SFT와 동일 (28*28)
-        video_max_frame_pixels: int = 28224 # SFT 이상값 (이전 25088)
-        video_min_frame_pixels: int = 784   # SFT 이상값 (이전 3136)
+        video_max_frames: int = 128         # SFT setting
+        video_min_frames: int = 64          # SFT setting
+        base_interval: float = 0.2          # SFT setting (fps 5)
+        max_pixels: int = 176400            # same as SFT (28*28*225)
+        min_pixels: int = 784               # same as SFT (28*28)
+        video_max_frame_pixels: int = 28224 # SFT setting
+        video_min_frame_pixels: int = 784   # SFT setting
         video_max_total_pixels: int = 1664 * 28 * 28
         video_min_total_pixels: int = 256 * 28 * 28
         run_test: bool = False
         do_sample: bool = False
         num_sample: int = 1
         train_type: str = "sft"
-        # 입력 측 TTI 마커 포맷. tti_mode 에서 파생 (on→special_token, off→off).
-        # LazySupervisedDataset 가 이 값으로 video/audio 청크 사이에 마커를 인터리빙.
-        # 이 값이 없으면 dataset 은 기본 "off" → special 모드인데도 마커 미삽입 → rope ON 분기와 불일치.
+        # Input-side TTI marker format, derived from tti_mode (on -> special_token, off -> off).
+        # LazySupervisedDataset interleaves markers between video/audio chunks with this value.
+        # Without it the dataset defaults to 'off' and inserts no markers, mismatching the rope ON branch.
         tti_time_format: str = "special_token"
         feature_size: int = 128
         chunk_length: int = 30
         hop_length: int = 160
         sampling_rate: int = 16000
         image_processor: object = None
-        audio_processor: object = None      # SFT에서 필요
-        # [GDPO Tier1] 비디오 디코드 메모이즈 캐시 크기(0=OFF). μ>1 일 때만 켠다(아래 주입).
+        audio_processor: object = None      # required by the SFT dataset code
+        # Video decode memo cache size (0 = off). Enabled only for mu > 1 (set below).
         video_cache_size: int = 0
 
     data_args = GDPODataArgs()
     data_args.dataset_use = dataset_path
     data_args.tti_time_format = tti_time_format
-    # [GDPO Tier1] μ>1(clip-higher rollout 재사용)에서 block-repeat 가 같은 비디오를 μ 번
-    #   요청하지만 cached 패스는 디코드 결과를 버린다(헛디코딩 → 호스트 RAM 압박). 최근
-    #   grad_accum+1 개 비디오를 메모이즈해 재디코드를 생략 → batch(grad_accum) 키울 여유 확보.
-    #   μ=1 이면 재사용이 없어 0(OFF)=기존 동작. (캐시 호스트 RAM 비용 ~수십~백수십MB, 바운드)
+    # With mu > 1 (clip-higher rollout reuse), block repeat requests the same video mu times but
+    #   the cached passes discard the decode (wasted decoding, host RAM pressure). Memoize the last
+    #   grad_accum+1 videos to skip re-decoding, leaving room for a larger batch.
+    #   mu=1 has no reuse, so 0 (off). (Host RAM cost is bounded, tens to ~100+ MB.)
     data_args.video_cache_size = (int(grad_accum) + 1) if int(num_iterations) > 1 else 0
     print(f"[GDPO] tti_mode={tti_mode} → data_args.tti_time_format={tti_time_format}")
     print(f"[GDPO Tier1] video_cache_size={data_args.video_cache_size} "
-          f"(μ={num_iterations}, grad_accum={grad_accum} → μ>1 일 때 헛디코딩 제거)")
-    # [TTI-DBG] ② config(model.time_token_id_range) ↔ data(tti_time_format) 정합성.
-    #   special_token ↔ id_range 있음, off ↔ id_range None 이어야 짝이 맞음.
+          f"(mu={num_iterations}, grad_accum={grad_accum}; avoids redundant decoding when mu > 1)")
+    # [TTI-DBG] consistency of config (model.time_token_id_range) and data (tti_time_format):
+    #   special_token <-> id_range set, off <-> id_range None.
     if TTI_DEBUG and _is_rank0():
         _mc_range = getattr(model.config, "time_token_id_range", None)
         _has_range = (_mc_range is not None)
@@ -1911,9 +1902,9 @@ def main():
         _tti_dbg(f"② main: tti_mode={tti_mode}, tti_time_format={tti_time_format}, "
                  f"model.config.time_token_id_range={_mc_range}")
         if _has_range != _want_markers:
-            _tti_dbg(f"⚠️ WARNING desync: tti_time_format={tti_time_format} 인데 "
+            _tti_dbg(f"WARNING desync: tti_time_format={tti_time_format} but "
                      f"model.config.time_token_id_range={_mc_range} "
-                     f"(ON↔range, OFF↔None 이어야 함) — rope 분기/마커 불일치 가능")
+                     f"(expected ON<->range, OFF<->None); rope branch and markers may not match")
     data_args.image_processor = Qwen2VLImageProcessorFast.from_pretrained(model_base)
     data_args.audio_processor = WhisperFeatureExtractor(
         feature_size=data_args.feature_size,
@@ -1928,9 +1919,8 @@ def main():
     )
     print(f"[GDPO] Dataset size: {len(dataset)}")
 
-    # ── [VAL] validation 데이터셋 (train 과 동일 data_args, 경로만 교체) ──
-    #   토글: --val_path 주면 강제 ON / 없으면 config.val.enabled / 둘 다 없으면 OFF.
-    #   (val 블록 없는 이전 config·이전 호출과 100% 호환 — 기본 OFF = 기존 동작 동일)
+    # -- [VAL] validation datasets (same data_args as training, only the path differs) --
+    #   --val_path forces it on; otherwise config.val.enabled; off when neither is given.
     val_path = _get(cli.val_path, "val", "dataset_path", default=None)
     val_enabled = (cli.val_path is not None) or bool(_get(None, "val", "enabled", default=False))
     val_sets = []   # list of (name, LazySupervisedDataset)
@@ -1947,33 +1937,33 @@ def main():
         primary_name = str(_get(None, "val", "name", default="unav"))
         val_sets.append((primary_name, _make_val_ds(val_path)))
         print(f"[GDPO][VAL] val dataset[{primary_name}]: {val_path} (size={len(val_sets[-1][1])})")
-        # 추가 val 세트: config.val.extra = [{name, dataset_path}, ...] (없으면 단일 세트)
+        # extra val sets: config.val.extra = [{name, dataset_path}, ...] (optional)
         for ex in (_get(None, "val", "extra", default=None) or []):
             ex_name = str(ex.get("name", f"val{len(val_sets)}"))
             ex_path = ex.get("dataset_path")
             if not ex_path:
-                print(f"[GDPO][VAL] ⚠️ extra val '{ex_name}' dataset_path 없음 → 스킵")
+                print(f"[GDPO][VAL] WARNING: extra val '{ex_name}' has no dataset_path, skipping")
                 continue
             val_sets.append((ex_name, _make_val_ds(ex_path)))
             print(f"[GDPO][VAL] val dataset[{ex_name}]: {ex_path} (size={len(val_sets[-1][1])})")
     elif val_enabled and not val_path:
-        print("[GDPO][VAL] ⚠️ val.enabled 인데 val_path 없음 → val 평가 비활성")
+        print("[GDPO][VAL] WARNING: val.enabled but no val_path; validation disabled")
 
-    # Reward — 모듈 선택 (단일 trainer, import 대상만 교체)
+    # Reward: select the module (one trainer, only the import target changes)
     reward_module = _get(cli.reward_module, "reward", "module", default="reward_functions")
     _specs = load_reward_module(reward_module)
     reward_funcs = make_reward_functions(_specs)
     _chan_names = [n for n, _, _ in _specs]
-    print(f"[GDPO] reward_module={reward_module}  채널={_chan_names} "
-          f"(iou 구현체={getattr(_specs[1][1], '__name__', '?')})")
-    # reward_weights 길이를 채널 수에 맞춤 (비-CoT 2채널은 그대로, CoT 4채널은 패딩/절단)
+    print(f"[GDPO] reward_module={reward_module}  channels={_chan_names} "
+          f"(iou implementation={getattr(_specs[1][1], '__name__', '?')})")
+    # Resize reward_weights to the number of channels
     if len(reward_weights) != len(reward_funcs):
         if len(reward_weights) > len(reward_funcs):
             reward_weights = list(reward_weights)[:len(reward_funcs)]
         else:
             reward_weights = list(reward_weights) + [1.0] * (len(reward_funcs) - len(reward_weights))
-        print(f"[GDPO] ⚠️ reward_weights 길이 자동조정 → {reward_weights} (채널 {len(reward_funcs)}개). "
-              f"CoT 4채널은 명시 권장: baseline [1,1,0,0] / guard [1,1,0.5,0.5]")
+        print(f"[GDPO] WARNING: reward_weights resized -> {reward_weights} ({len(reward_funcs)} channels). "
+              f"Set reward_weights explicitly to match the reward module.")
     print(f"[GDPO] Reward weights: {reward_weights}")
 
     # GRPOConfig
@@ -2001,37 +1991,37 @@ def main():
         logging_dir=os.path.join(output_dir, "logs"),
         remove_unused_columns=False,
     )
-    # max_steps: cli > config.training.max_steps (>0 일 때만 적용; epoch 무시)
+    # max_steps: cli > config.training.max_steps (applied only when > 0; ignores epochs)
     _max_steps = _get(cli.max_steps, "training", "max_steps", default=None)
     if _max_steps is not None and int(_max_steps) > 0:
         grpo_kwargs["max_steps"] = int(_max_steps)
     grpo_args = GRPOConfig(**grpo_kwargs)
-    # clip-higher 파라미터를 args 에 부착 (GDPOTrainer.__init__ 가 getattr 로 읽음).
-    #   GRPOConfig 생성자에 없는 필드일 수 있어 생성 후 setattr 로 안전하게 주입.
+    # Attach clip-higher parameters to args (read via getattr in GDPOTrainer.__init__).
+    #   They may not be GRPOConfig constructor fields, so they are set after construction.
     grpo_args.epsilon = epsilon_low
     grpo_args.epsilon_high = epsilon_high
     grpo_args.clip_higher = clip_enabled
     grpo_args.num_iterations = max(1, num_iterations)
-    grpo_args.multi_seg_weight = multi_seg_weight   # [sep2] GDPOTrainer.__init__ 가 getattr 로 읽음
-    _clip_state = (f"μ={grpo_args.num_iterations} → clip 작동"
-                   if grpo_args.num_iterations > 1 else "μ=1 → clip 미작동(=GDPO 동일)")
+    grpo_args.multi_seg_weight = multi_seg_weight   # read via getattr in GDPOTrainer.__init__
+    _clip_state = (f"mu={grpo_args.num_iterations} -> clip active"
+                   if grpo_args.num_iterations > 1 else "mu=1 -> clip inactive (= plain GDPO)")
     print(f"[GDPO] clip-higher: enabled={clip_enabled}, ε_low={epsilon_low}, ε_high={epsilon_high}, {_clip_state}")
     print(f"[GDPO sep2] multi_seg_weight(w)={multi_seg_weight} "
-          f"({'multi-GT advantage ×w' if multi_seg_weight != 1.0 else 'w=1 → sep1 동일'})")
-    # [clip2] grad_accum 지원 — block-repeat sampler 로 μ iteration 사이에 step 이 일어나므로
-    #   grad_accum>1 이어도 clip 이 정상 binding (기존 'grad_accum=1 필수' 경고는 더 이상 해당 없음).
+          f"({'multi-GT advantage x w' if multi_seg_weight != 1.0 else 'w=1 -> off'})")
+    # grad_accum support: the block-repeat sampler steps between mu iterations, so the clip
+    #   binds correctly with grad_accum > 1.
     _N = int(grad_accum)
     _world = int(os.environ.get("WORLD_SIZE", "1"))
     _eff_batch = _N * _world
     print(f"[GDPO clip2] grad_accum(N)={_N}, world_size={_world} → effective batch(distinct prompt/step)={_eff_batch}")
-    print(f"[GDPO clip2] block-repeat sampler: 한 블록 N={_N} prompt 를 μ={grpo_args.num_iterations}번 반복 "
-          f"→ N microbatch 마다 step (μ 사이 policy 업데이트). "
-          f"고유 prompt 총량 = max_steps × N × world / μ")
+    print(f"[GDPO clip2] block-repeat sampler: each block of N={_N} prompts is repeated mu={grpo_args.num_iterations} times "
+          f"-> one optimizer step per N microbatches (policy updated between mu iterations). "
+          f"unique prompts = max_steps x N x world / mu")
     if _eff_batch < 4:
-        print(f"[GDPO clip2] ⚠️ effective batch={_eff_batch} (<4). reward 추정/gradient noisy 할 수 있음 "
-              f"→ grad_accum 또는 GPU 수 ↑ 권장.")
+        print(f"[GDPO clip2] WARNING: effective batch={_eff_batch} (<4); reward estimates/gradients may be noisy "
+              f"-> increase grad_accum or the number of GPUs.")
 
-    # Trainer  (peft_config 전달 → 경로 B 일 때 fresh LoRA 적용)
+    # Trainer (peft_config is passed -> fresh LoRA for path B)
     trainer = GDPOTrainer(
         model=model,
         reward_funcs=reward_funcs,
@@ -2042,7 +2032,7 @@ def main():
         peft_config=peft_config,
     )
 
-    # ── [VAL] save_steps 마다 greedy 평가 콜백 부착 (checkpoint selection 용; val OFF면 스킵) ──
+    # -- [VAL] attach the greedy evaluation callback at every save step (skipped when val is off) --
     if val_sets:
         val_max_new = int(_get(None, "val", "max_new_tokens", default=max_completion_length))
         val_max_time = float(_get(None, "val", "max_time", default=999.9))
@@ -2056,11 +2046,11 @@ def main():
             natural=val_natural,
         ))
         _names = ", ".join(n for n, _ in val_sets)
-        print(f"[GDPO][VAL] ValEvalCallback 부착 — save_steps({save_steps})마다 평가 "
+        print(f"[GDPO][VAL] ValEvalCallback attached: evaluating every save_steps ({save_steps}) "
               f"[{_names}] (greedy, max_new={val_max_new}, max_time={val_max_time}) → "
-              f"{output_dir}/val_metrics.jsonl  (top-level combined = 세트 평균)")
+              f"{output_dir}/val_metrics.jsonl  (top-level combined = mean over sets)")
 
-    # Train (resume 지원: 'True'=최신 체크포인트 자동 / 경로=특정 체크포인트 / None=처음부터)
+    # Train (resume: 'True' = latest checkpoint / a path = that checkpoint / None = from scratch)
     _rc = cli.resume_from_checkpoint
     if _rc in ("", "None"):
         _rc = None

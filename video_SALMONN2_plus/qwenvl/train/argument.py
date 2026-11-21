@@ -55,19 +55,19 @@ class DataArguments:
     hop_length: int = field(default=160)
     sampling_rate: int = field(default=16000)
     # ---- TTI debug mode ----
-    # 비어있지 않으면 활성화: dataset.__getitem__ 에서 인터리빙 구조 덤프
+    # If non-empty: dump the interleaved structure from dataset.__getitem__
     debug_interleave_dir: str = field(default="")
-    # True 면 model.generate 도 수행 (출력 확인용). 기본 False — 덤프만 하고 스킵.
+    # If True, also run model.generate (to inspect outputs). Default False: dump only.
     debug_interleave_generate: bool = field(default=False)
-    # -1 = 전체, >0 = 앞에서 N 샘플만 덤프
+    # -1 = all samples, >0 = only the first N samples
     debug_interleave_sample_limit: int = field(default=-1)
     # ---- TTI input-side time marker format ----
-    # "off"           : 마커 미삽입 (Qwen2.5-VL 베이스라인 동작) — 기본값
+    # "off"           : no markers (Qwen2.5-VL baseline behaviour), default
     # "special_token" : <t0><t1><t5><tdot><t6> (5 special tokens, XXX.Y)
-    # "natural_text"  : "second{0015.6}" (9 일반 텍스트 토큰, zero-padded XXXX.Y)
-    # "from_to"       : "From <t*>×5 to <t*>×5" (14 토큰; 출력 GT 와 동일 포맷)
-    # 출력(GT/labels) 형식은 모드와 무관 — 항상 special_token. 이 옵션은 video/audio
-    # 청크 사이에 끼우는 입력 측 마커 표현만 바꾼다.
+    # "natural_text"  : "second{015.6}" (8 plain-text tokens, zero-padded XXX.Y)
+    # "from_to"       : "From <t*>x5 to <t*>x5" (14 tokens; same format as the output)
+    # The output (GT/labels) format is always special_token. This option only changes
+    # the input-side markers inserted between video/audio chunks.
     tti_time_format: str = field(default="off")
 
 

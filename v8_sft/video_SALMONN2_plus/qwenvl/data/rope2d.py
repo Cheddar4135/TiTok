@@ -141,14 +141,14 @@ def get_rope_index_25(
             vision_tokens = input_ids[vision_start_indices + 1]
             if tti_active:
                 if time_token_id_range is not None:
-                    # special_token: vision_start 직후가 video_pad 또는 time_token 범위
+                    # special_token: the token after vision_start is video_pad or in the time-token range
                     _lo, _hi = time_token_id_range
                     video_nums = (
                         (vision_tokens == video_token_id)
                         | ((vision_tokens >= _lo) & (vision_tokens <= _hi))
                     ).sum()
                 else:
-                    # natural_text: image/audio 가 아닌 vision_start 는 video block
+                    # natural_text: a vision_start that is not image/audio starts a video block
                     video_nums = (
                         (vision_tokens != image_token_id)
                         & (vision_tokens != audio_token_id)
@@ -174,8 +174,8 @@ def get_rope_index_25(
                 else:
                     second_per_grid_t = 1.0
 
-                # TTI: 비디오 블록의 진짜 시작은 첫 video_pad 가 아니라 그 앞에 붙은
-                # 첫 청크의 첫 마커 토큰 위치.
+                # TTI: the video block really starts at the first marker token of the first
+                # chunk, not at the first video_pad.
                 ed = ed_video
                 if tti_active and ed_video <= len(input_tokens):
                     if time_token_id_range is not None:
@@ -233,8 +233,8 @@ def get_rope_index_25(
                 audio_pos = torch.stack([time_index_audio, h_index_audio, w_index_audio]) + st_idx + text_len
                 # llm_pos_ids_list.append(audio_pos)
                 if tti_active:
-                    # 청크 k의 마커 토큰들은 모두 동일 3D position 을 가짐:
-                    #   t = w = k * second_per_grid_t * 2  (비디오 첫 프레임과 동일)
+                    # All marker tokens of chunk k share one 3D position:
+                    #   t = w = k * second_per_grid_t * 2  (same as the first frame of the chunk)
                     #   h = 0
                     M = time_marker_token_len
                     chunk_t_base = (
@@ -737,8 +737,8 @@ def get_rope_index_2(
     video_grid_thw: Optional[torch.LongTensor] = None,
     second_per_grid_ts: Optional[torch.Tensor] = None,
     attention_mask: Optional[torch.Tensor] = None,
-    time_token_id_range: Optional[Tuple[int, int]] = None,   # API 호환 (Qwen2-VL 경로는 미지원)
-    time_marker_token_len: Optional[int] = None,             # API 호환 (Qwen2-VL 경로는 미지원)
+    time_token_id_range: Optional[Tuple[int, int]] = None,   # API compatibility (unsupported on the Qwen2-VL path)
+    time_marker_token_len: Optional[int] = None,             # API compatibility (unsupported on the Qwen2-VL path)
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """
     Calculate the 3D rope index based on image and video's temporal, height and width in LLM.

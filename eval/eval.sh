@@ -1,18 +1,18 @@
 #!/bin/bash
 # ============================================================
-# SALMONN2+ 통합 Eval 런처 (eval.sh)
+# TiTok inference + evaluation launcher (eval.sh)
 #
-# 하나의 스크립트로 다음을 모두 지원:
-#   - CHUNK=on|off       : 청크 추론(+자동 resume) / 단일 JSON 추론
-#   - 모델 종류          : base+LoRA(no-merged) / full-merged(MERGED_MODEL=) / base(CKPT_STEP=base)
-#   - MODE=infer|eval    : 추론+평가 / 이미 있는 결과파일만 평가(GPU 불필요)
-#   - NATURAL=on|off     : 관대 파싱(HH:MM:SS/M:SS/소수초/second{}...) / 시간토큰만(기본)
-#   - CoT 출력           : <answer>...</answer> 안만 자동 파싱 (eval_miou.py 내부 처리)
+# One script covers:
+#   - CHUNK=on|off       : chunked inference (with automatic resume) / single-JSON inference
+#   - model types        : base + LoRA / fully merged (MERGED_MODEL=) / base only (CKPT_STEP=base)
+#   - MODE=infer|eval    : inference + scoring / score existing predictions only (no GPU)
+#   - NATURAL=on|off     : lenient parsing (HH:MM:SS, M:SS, seconds, second{}...) / time tokens only (default)
+#   - CoT outputs        : only <answer>...</answer> is parsed (handled by eval_miou.py)
 #
-# 산출물(결과 폴더):
-#   test_results_rank0.json   : 추론 결과 (MODE=infer 일 때)
+# Outputs (result folder):
+#   test_results_rank0.json   : predictions (MODE=infer)
 #   pairwise_miou_summary.json  union_miou_summary.json  sample_miou_summary.json
-#   inference.log (infer), eval_miou_progress.jsonl (chunk 진행 스냅샷)
+#   inference.log (infer), eval_miou_progress.jsonl (chunk progress snapshots)
 #
 # ── Examples (run from the repo root) ─────────────────────
 #  # 1) GDPO LoRA checkpoint on UnAV-100 (base model + adapter)
@@ -30,24 +30,24 @@
 set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# ---- 기본값 (CLI KEY=VALUE 로 override) ----
+# ---- Defaults (override with KEY=VALUE on the command line) ----
 MODE=infer                 # infer | eval
 CHUNK=off                  # on | off
 CHUNK_SIZE=500
 STAGE=sft                  # sft | gdpo
 CKPT_MODEL_ID=
-CKPT_STEP=                 # 빈값=latest checkpoint-*, base/no=base, 숫자/checkpoint-N
+CKPT_STEP=                 # empty = latest checkpoint-*, base/no = base model, N or checkpoint-N
 BASE_MODEL_ID=base/video_salmonn2_plus_7B_time_tokens
-MERGED_MODEL=              # 설정 시 이 경로를 직접 로드(lora_ckpt=No), STAGE/CKPT_* 무시
-TEST_JSON=                 # CHUNK=off / MODE=eval 의 GT(+추론 입력)
-TESTSET=                   # CHUNK=on 의 chunks 디렉토리 이름 (data/test/<TESTSET>/)
-TESTSET_TAG=               # 빈값이면 TEST_JSON 파일명 또는 TESTSET 에서 자동
-RESULTS=                   # MODE=eval 에서 평가할 결과파일/폴더 (생략 시 OUT_DIR 추정)
-OUT_DIR=                   # 빈값이면 규칙대로 자동 생성
-LABEL=                     # summary 라벨 (빈값이면 CKPT_MODEL_ID/MERGED/base 명)
+MERGED_MODEL=              # load this path directly (lora_ckpt=No); STAGE/CKPT_* are ignored
+TEST_JSON=                 # GT (and inference input) for CHUNK=off / MODE=eval
+TESTSET=                   # CHUNK=on: name of data/test/<TESTSET>.json
+TESTSET_TAG=               # default: TEST_JSON file name or TESTSET
+RESULTS=                   # MODE=eval: result file/folder to score (default: OUT_DIR)
+OUT_DIR=                   # default: derived from the model and test set
+LABEL=                     # summary label (default: CKPT_MODEL_ID / merged / base name)
 NATURAL=off                # on | off
-GT_REF=off                 # on=GT 를 ref(토큰)에서 파싱(강제). 미지정 시 자동감지(embedded>ref>test_json)
-PRED_PERCENT=off           # on=pred 구간을 %로 보고 duration 곱해 초 환산 (avicuna)
+GT_REF=off                 # on = parse GT from ref (tokens). Default: auto (embedded > ref > test_json)
+PRED_PERCENT=off           # on = predictions are percentages of the duration
 GPUS=0
 CONFIG=config.yaml
 TTI_TIME_FORMAT_CLI=
@@ -74,7 +74,7 @@ for arg in "$@"; do
         GPUS=*) GPUS="${arg#*=}" ;;
         CONFIG=*) CONFIG="${arg#*=}" ;;
         TTI_TIME_FORMAT=*) TTI_TIME_FORMAT_CLI="${arg#*=}" ;;
-        *) echo "[에러] 지원하지 않는 인자: $arg"; exit 1 ;;
+        *) echo "[error] unsupported argument: $arg"; exit 1 ;;
     esac
 done
 
@@ -82,11 +82,11 @@ EVAL_PY="${SCRIPT_DIR}/eval_miou.py"
 HELPER="${SCRIPT_DIR}/_chunk_helpers.py"
 MAKETABLE="${SCRIPT_DIR}/maketable.py"
 
-# eval 완료 후 카테고리(gdpo/base/sft/merged) 루트의 table.txt 를 자동 갱신.
-#   결과경로에서 outputs 바로 아래 카테고리 폴더를 찾아 maketable.py 를 그 폴더에 실행한다.
-#   예) .../outputs/gdpo/<run>/checkpoint-200 → .../outputs/gdpo/table.txt
+# After scoring, refresh table.txt at the category root (gdpo/base/sft/merged).
+#   The category folder directly below outputs/ is found from the result path and maketable.py runs there.
+#   e.g. .../outputs/gdpo/<run>/checkpoint-200 -> .../outputs/gdpo/table.txt
 #       .../outputs/base/MUSEG/Unav100        → .../outputs/base/table.txt
-#   (maketable 은 stdlib 만 사용 → conda 불필요. 실패해도 eval 결과엔 영향 X.)
+#   (maketable uses only the standard library; failures do not affect the results.)
 update_table() {
     local _dir="$1"
     [ -f "$_dir" ] && _dir="$(dirname "$_dir")"
@@ -100,10 +100,10 @@ update_table() {
     done
     IFS="$_oldIFS"
     if [ -z "$_root" ]; then
-        echo "[table] 카테고리(gdpo/base/sft/merged) 루트 못 찾음 → table 갱신 skip: $_abs"; return 0
+        echo "[table] no category root (gdpo/base/sft/merged) found, skipping table update: $_abs"; return 0
     fi
     echo "[table] maketable → ${_root}/table.txt"
-    python3 "$MAKETABLE" "$_root" || echo "[table] maketable 실패(무시): $_root"
+    python3 "$MAKETABLE" "$_root" || echo "[table] maketable failed (ignored): $_root"
 }
 
 EXTRA_FLAGS=""
@@ -111,9 +111,9 @@ EXTRA_FLAGS=""
 [ "$GT_REF" = "on" ] && EXTRA_FLAGS="$EXTRA_FLAGS --gt_ref"
 [ "$PRED_PERCENT" = "on" ] && EXTRA_FLAGS="$EXTRA_FLAGS --pred_percent"
 
-# ---- config.yaml 로드 (flat KEY: VALUE) ----
+# ---- Load config.yaml (flat KEY: VALUE) ----
 CONFIG_PATH="${SCRIPT_DIR}/${CONFIG}"
-[ -f "$CONFIG_PATH" ] || { echo "[에러] config 없음: $CONFIG_PATH"; exit 1; }
+[ -f "$CONFIG_PATH" ] || { echo "[error] config not found: $CONFIG_PATH"; exit 1; }
 while IFS= read -r line || [ -n "$line" ]; do
     line="${line%$'\r'}"; line="${line%%#*}"
     [[ -z "${line// }" ]] && continue
@@ -128,12 +128,12 @@ done < "$CONFIG_PATH"
 MAX_TIME="${MAX_TIME:-9999.9}"
 
 # ============================================================
-# MODE=eval : 추론 생략, 이미 있는 결과만 평가 (GPU 불필요)
+# MODE=eval : skip inference and score existing predictions (no GPU)
 # ============================================================
 if [ "$MODE" = "eval" ]; then
     EVAL_TARGET="${RESULTS:-$OUT_DIR}"
-    [ -n "$EVAL_TARGET" ] || { echo "[에러] MODE=eval 은 RESULTS= 또는 OUT_DIR= 필요"; exit 1; }
-    [ -e "$EVAL_TARGET" ] || { echo "[에러] 평가 대상 없음: $EVAL_TARGET"; exit 1; }
+    [ -n "$EVAL_TARGET" ] || { echo "[error] MODE=eval requires RESULTS= or OUT_DIR="; exit 1; }
+    [ -e "$EVAL_TARGET" ] || { echo "[error] nothing to score: $EVAL_TARGET"; exit 1; }
     [ -z "$TESTSET_TAG" ] && [ -n "$TEST_JSON" ] && TESTSET_TAG=$(basename "$TEST_JSON" .json)
     [ -z "$LABEL" ] && LABEL="${CKPT_MODEL_ID:-eval}"
     echo "[MODE=eval] target=$EVAL_TARGET  natural=$NATURAL"
@@ -141,12 +141,12 @@ if [ "$MODE" = "eval" ]; then
         ${TEST_JSON:+--test_json "$TEST_JSON"} $EXTRA_FLAGS \
         --max_time "$MAX_TIME" --label "$LABEL" --testset "$TESTSET_TAG"
     update_table "$EVAL_TARGET"
-    echo "[완료] eval-only"
+    echo "[done] eval-only"
     exit 0
 fi
 
 # ============================================================
-# MODE=infer : 추론 + 평가
+# MODE=infer : inference + scoring
 # ============================================================
 # Paths (REPO_ROOT, DATA_DIR, CKPT_DIR, OUTPUT_DIR, MEDIA_ROOT) come from paths.env.
 # Activate the Python environment (see README) before running this script.
@@ -176,19 +176,19 @@ EVAL_TAG="fps${FPS_INT}_${FORMAT_TAG}"
 BASE_CODE="${REPO_ROOT}/video_SALMONN2_plus"
 MODEL_BASE="${CKPT_DIR}/${BASE_MODEL_ID}"
 
-# ---- 모델 해석: MERGED_MODEL > CKPT_STEP=base > base+LoRA ----
-# IS_BASE_EVAL=true → LoRA 머지 불필요 (model_name 직접 로드, lora_ckpt=No)
+# ---- Model resolution: MERGED_MODEL > CKPT_STEP=base > base + LoRA ----
+# IS_BASE_EVAL=true -> no LoRA merge needed (load model_name directly, lora_ckpt=No)
 IS_BASE_EVAL=false
 if [ -n "$MERGED_MODEL" ]; then
-    [ -f "$MERGED_MODEL/config.json" ] || { echo "[에러] merged 모델 없음: $MERGED_MODEL"; exit 1; }
+    [ -f "$MERGED_MODEL/config.json" ] || { echo "[error] merged model not found: $MERGED_MODEL"; exit 1; }
     LORA_CKPT="No"; IS_BASE_EVAL=true
     MODEL_LOAD="$MERGED_MODEL"
     OUT_BRANCH="merged/$(basename "$MERGED_MODEL")"
     [ -z "$LABEL" ] && LABEL="$(basename "$MERGED_MODEL")"
 else
     STAGE=$(echo "$STAGE" | tr '[:upper:]' '[:lower:]')
-    [ "$STAGE" = "sft" ] || [ "$STAGE" = "gdpo" ] || { echo "[에러] STAGE는 sft|gdpo"; exit 1; }
-    [ -n "$CKPT_MODEL_ID" ] || { echo "[에러] CKPT_MODEL_ID 필요 (또는 MERGED_MODEL=)"; exit 1; }
+    [ "$STAGE" = "sft" ] || [ "$STAGE" = "gdpo" ] || { echo "[error] STAGE must be sft|gdpo"; exit 1; }
+    [ -n "$CKPT_MODEL_ID" ] || { echo "[error] CKPT_MODEL_ID is required (or MERGED_MODEL=)"; exit 1; }
     MODEL_DIR="${CKPT_DIR}/${STAGE}/${CKPT_MODEL_ID}"
     CKPT_STEP_LOWER=$(echo "$CKPT_STEP" | tr '[:upper:]' '[:lower:]')
     _root_ckpt_folder() {
@@ -201,16 +201,16 @@ else
         LORA_CKPT=$(ls -d "$MODEL_DIR"/checkpoint-* 2>/dev/null | sort -V | tail -n 1) || true
         if [ -n "$LORA_CKPT" ]; then CKPT_FOLDER=$(basename "$LORA_CKPT")
         elif [ -f "$MODEL_DIR/adapter_config.json" ]; then LORA_CKPT="$MODEL_DIR"; CKPT_FOLDER=$(_root_ckpt_folder)
-        else echo "[에러] $MODEL_DIR 에 checkpoint-* / adapter_config.json 없음"; exit 1; fi
+        else echo "[error] no checkpoint-* or adapter_config.json in $MODEL_DIR"; exit 1; fi
     elif [ "$CKPT_STEP_LOWER" = "base" ] || [ "$CKPT_STEP_LOWER" = "no" ]; then
         LORA_CKPT="No"; CKPT_FOLDER="base"; IS_BASE_EVAL=true
     elif [ "$CKPT_STEP_LOWER" = "root" ] || [ "$CKPT_STEP_LOWER" = "self" ]; then
-        [ -f "$MODEL_DIR/adapter_config.json" ] || { echo "[에러] $MODEL_DIR adapter 없음"; exit 1; }
+        [ -f "$MODEL_DIR/adapter_config.json" ] || { echo "[error] no adapter in $MODEL_DIR"; exit 1; }
         LORA_CKPT="$MODEL_DIR"; CKPT_FOLDER=$(_root_ckpt_folder)
     else
         if [[ "$CKPT_STEP" == checkpoint-* ]]; then CKPT_FOLDER="$CKPT_STEP"; else CKPT_FOLDER="checkpoint-${CKPT_STEP}"; fi
         LORA_CKPT="${MODEL_DIR}/${CKPT_FOLDER}"
-        [ -d "$LORA_CKPT" ] || { echo "[에러] 체크포인트 없음: $LORA_CKPT"; exit 1; }
+        [ -d "$LORA_CKPT" ] || { echo "[error] checkpoint not found: $LORA_CKPT"; exit 1; }
     fi
     MODEL_LOAD="$MODEL_BASE"
     if [ "$IS_BASE_EVAL" = "true" ]; then OUT_BRANCH="base/${BASE_MODEL_ID#base/}"
@@ -218,7 +218,7 @@ else
     [ -z "$LABEL" ] && LABEL="${CKPT_MODEL_ID:-${BASE_MODEL_ID#base/}}"
 fi
 
-# ---- testset 소스 / 태그 / OUT_DIR ----
+# ---- Test set source / tag / OUT_DIR ----
 if [ "$CHUNK" = "on" ]; then
     [ -n "$TESTSET" ] || { echo "[error] CHUNK=on requires TESTSET= (reads data/test/<TESTSET>.json)"; exit 1; }
     CHUNKS_DIR="${EVAL_DIR}/.chunks/${TESTSET}_${CHUNK_SIZE}"
@@ -228,14 +228,14 @@ if [ "$CHUNK" = "on" ]; then
         python3 "$HELPER" split --test_json "$SRC_JSON" --chunks_dir "$CHUNKS_DIR" --chunk_size "$CHUNK_SIZE"
     fi
     [ -z "$TESTSET_TAG" ] && TESTSET_TAG="$TESTSET"
-    # _full.json (eval GT 용; 없으면 생성)
+    # _full.json (GT for scoring; created if missing)
     TEST_JSON="${CHUNKS_DIR}/_full.json"
     python3 "$HELPER" build_full --chunks_dir "$CHUNKS_DIR" >/dev/null
     mapfile -t CHUNK_FILES < <(ls "$CHUNKS_DIR"/chunk_*.json 2>/dev/null | sort)
     N_CHUNKS=${#CHUNK_FILES[@]}
-    [ "$N_CHUNKS" -gt 0 ] || { echo "[에러] $CHUNKS_DIR 에 chunk_*.json 없음"; exit 1; }
+    [ "$N_CHUNKS" -gt 0 ] || { echo "[error] no chunk_*.json in $CHUNKS_DIR"; exit 1; }
 else
-    [ -f "$TEST_JSON" ] || { echo "[에러] TEST_JSON 없음: $TEST_JSON"; exit 1; }
+    [ -f "$TEST_JSON" ] || { echo "[error] TEST_JSON not found: $TEST_JSON"; exit 1; }
     [ -z "$TESTSET_TAG" ] && TESTSET_TAG=$(basename "$TEST_JSON" .json)
 fi
 
@@ -247,7 +247,7 @@ PROGRESS_LOG="$OUT_DIR/eval_miou_progress.jsonl"
 
 cat <<EOF
 ==================================================
-  통합 eval (MODE=infer)
+  TiTok eval (MODE=infer)
   CHUNK          : $CHUNK   $( [ "$CHUNK" = on ] && echo "($N_CHUNKS chunks)" )
   MODEL_LOAD     : $MODEL_LOAD
   LORA_CKPT      : $LORA_CKPT   (base_eval=$IS_BASE_EVAL)
@@ -259,8 +259,8 @@ cat <<EOF
 ==================================================
 EOF
 
-# ---- 추론 1회 호출 (입력 json, 모델, lora 를 인자로) ----
-# 사용: run_inference <dataset_json> <model_name_or_path> <lora_ckpt> <output_dir>
+# ---- One inference call (input json, model, lora as arguments) ----
+# Usage: run_inference <dataset_json> <model_name_or_path> <lora_ckpt> <output_dir>
 run_inference() {
     local _ds="$1" _model="$2" _lora="$3" _outdir="$4"
     torchrun --nproc_per_node=$NUM_GPUS --master_port=$MASTER_PORT \
@@ -292,7 +292,7 @@ run_inference() {
         2>&1 | tee -a "$INFER_LOG"
 }
 
-# 평가 1회 호출 → 3개 summary 갱신
+# One scoring call -> refresh the three summaries
 run_eval() {
     local _quiet="$1"
     python3 "$EVAL_PY" "$MASTER_RESULT" --test_json "$TEST_JSON" $EXTRA_FLAGS \
@@ -304,18 +304,18 @@ run_eval() {
 cd "$BASE_CODE"
 
 if [ "$CHUNK" != "on" ]; then
-    # ---------- 단일 JSON ----------
+    # ---------- single JSON ----------
     echo "[1/2] inference (tti=${TTI_TIME_FORMAT:-off})" | tee "$INFER_LOG"
     run_inference "$TEST_JSON" "$MODEL_LOAD" "$LORA_CKPT" "$OUT_DIR"
-    [ -f "$MASTER_RESULT" ] || { echo "[에러] 결과 없음: $MASTER_RESULT"; exit 1; }
+    [ -f "$MASTER_RESULT" ] || { echo "[error] no predictions: $MASTER_RESULT"; exit 1; }
     rm -rf "$OUT_DIR/generation_0" 2>/dev/null || true
     echo "[2/2] eval → 3 summaries"
     run_eval ""
     update_table "$OUT_DIR"
-    echo "[완료] $OUT_DIR"; exit 0
+    echo "[done] $OUT_DIR"; exit 0
 fi
 
-# ---------- 청크 (자동 resume + LoRA merge 캐시 재사용) ----------
+# ---------- chunked (automatic resume + cached LoRA merge) ----------
 CHUNK_IDX_FILE="$OUT_DIR/.chunk_idx"
 CHUNK_WORKDIR="$OUT_DIR/.chunk_workdir"
 MERGED_CACHE="$OUT_DIR/.merged_model"
@@ -339,8 +339,8 @@ cleanup_all() {
 trap cleanup_all EXIT
 
 if [ "$START_CHUNK" -ge "$N_CHUNKS" ]; then
-    echo "[SKIP] 모든 $N_CHUNKS chunk 완료됨; 최종 평가만"
-    run_eval ""; SUCCESS=1; update_table "$OUT_DIR"; echo "[완료] $OUT_DIR"; exit 0
+    echo "[SKIP] all $N_CHUNKS chunks done; final scoring only"
+    run_eval ""; SUCCESS=1; update_table "$OUT_DIR"; echo "[done] $OUT_DIR"; exit 0
 fi
 
 for ((i=START_CHUNK; i<N_CHUNKS; i++)); do
@@ -356,8 +356,8 @@ for ((i=START_CHUNK; i<N_CHUNKS; i++)); do
     run_inference "$chunk_json" "$_model" "$_lora" "$CHUNK_WORKDIR"
 
     chunk_result="$CHUNK_WORKDIR/test_results_rank0.json"
-    [ -f "$chunk_result" ] || { echo "[에러] chunk $chunk_id 결과 없음"; exit 1; }
-    # 첫 LoRA merge 산출물을 캐시로 보존(이후 chunk 재사용)
+    [ -f "$chunk_result" ] || { echo "[error] no result for chunk $chunk_id"; exit 1; }
+    # keep the first LoRA merge output as a cache for later chunks
     if [ "$IS_BASE_EVAL" != "true" ] && [ ! -d "$MERGED_CACHE" ] && [ -d "$CHUNK_WORKDIR/generation_0" ]; then
         mv "$CHUNK_WORKDIR/generation_0" "$MERGED_CACHE"; echo "[MERGE] cached -> $MERGED_CACHE"
     fi
@@ -372,4 +372,4 @@ echo ""; echo "=== FINAL EVAL $(date -Iseconds) ==="
 run_eval ""
 SUCCESS=1
 update_table "$OUT_DIR"
-echo "[완료] $OUT_DIR"
+echo "[done] $OUT_DIR"

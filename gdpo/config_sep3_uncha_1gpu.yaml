@@ -20,8 +20,8 @@ lora:
   lora_alpha: 64
   lora_dropout: 0.05
   train_embeddings: false
-  train_lm_head: false                 # lm_head 닫음
-  target_modules:                      # MLP 포함 full-block LoRA
+  train_lm_head: false                 # lm_head frozen
+  target_modules:                      # full-block LoRA (attention + MLP)
     - q_proj
     - k_proj
     - v_proj
@@ -36,7 +36,7 @@ gdpo:
   beta: 0.00
   temperature: 1.0
   reward_weights: [1.0, 1.0, 1.0, 1.0, 1.0]   # [format, count, global, local, precision]
-  multi_seg_weight: 1.0                 # ← no-scaling (기존 1.5 → 1.0, multi 가중 제거)
+  multi_seg_weight: 1.0                 # no multi-segment advantage scaling
 
 clip:
   enabled: true
@@ -49,7 +49,7 @@ training:
   num_train_epochs: 1
   max_steps: 5179              # full 1 epoch (= 10358 unique prompts @ eff batch 4, μ=2)
   per_device_train_batch_size: 1
-  gradient_accumulation_steps: 4       # ← eff batch = grad_accum(4) × num_gpu(1) = 4  (A100 1장, GPU 2→1 보정)
+  gradient_accumulation_steps: 4       # effective batch = grad_accum (4) x GPUs (1) = 4
   learning_rate: 1.0e-5
   warmup_ratio: 0.05
   lr_scheduler_type: constant_with_warmup
@@ -62,12 +62,12 @@ training:
 logging:
   logging_steps: 1
   save_steps: 200
-  save_total_limit: 30                 # ← full-run 전 구간 ckpt 보존 (best 사후 선택용)
+  save_total_limit: 30                 # keep every checkpoint of the full run
   report_to: wandb
   run_name: null
 
 reward:
-  module: reward_functions_rM_sep3     # ← fp→precision(연속), len→count. 채널 5개.
+  module: reward_functions_rM_sep3     # 5 channels: format, count, global, local, precision
 
 ref_model:
   enabled: true
@@ -76,12 +76,11 @@ val:
   enabled: true
   name: unav
   dataset_path: ${DATA_DIR}/gdpo/val_unav100.json
-  extra:                                    # 추가 val 세트 — 세트별 + 평균 로깅
+  extra:                                    # additional val sets, logged per set and averaged
     - name: charades
       dataset_path: ${DATA_DIR}/gdpo/val_charades.json   # Charades-STA has no audio track (use_audio=false)
   max_new_tokens: 256
   max_time: 999.9
   natural: false
-  # val_metrics.jsonl top-level combined/seg_miou/f1_avg = (unav + charades) 평균
-  #   → select_best_ckpt.py 가 평균 기준으로 best step 선택.
-  #   세트별 값은 sets.{unav,charades} + wandb val_unav/* · val_charades/* 에서 확인.
+  # Top-level combined/seg_miou/f1_avg in val_metrics.jsonl = mean over (unav, charades).
+  # Per-set values: sets.{unav,charades} and W&B val_unav/*, val_charades/*.

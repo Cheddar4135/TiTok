@@ -58,7 +58,7 @@ local_rank = None
 # TTI (Time-Token Interleaving) helpers
 # ============================================================================
 def sec_to_time_token_str(sec: float) -> str:
-    # 초 → XXX.Y 포맷의 5개 타임토큰 문자열. 범위 0.0~999.9, 정밀도 0.1초.
+    # Seconds -> 5 time tokens in XXX.Y format. Range 0.0~999.9 s, precision 0.1 s.
     sec = max(0.0, min(999.9, sec))
     tenths = round(sec * 10)
     i = tenths // 10
@@ -68,19 +68,19 @@ def sec_to_time_token_str(sec: float) -> str:
 
 
 def sec_to_natural_text_str(sec: float) -> str:
-    # 초 → 'second{XXXX.Y}' 형식. 9 토큰 고정.
+    # Seconds -> 'second{XXXX.Y}'. Always 9 tokens.
     sec = max(0.0, min(9999.9, sec))
     return f"second{{{sec:06.1f}}}"
 
 
 def sec_to_from_to_str(sec_start: float, sec_end: float) -> str:
-    # (start, end) → 'From <t*>×5 to <t*>×5' (출력 GT 와 동일 포맷). 14 토큰.
+    # (start, end) -> 'From <t*>x5 to <t*>x5' (same format as the output). 14 tokens.
     return f"From {sec_to_time_token_str(sec_start)} to {sec_to_time_token_str(sec_end)}"
 
 
 def make_time_marker_string(sec_start: float, tti_time_format: str,
                             sec_end: float = None) -> str:
-    # tti_time_format 에 따라 입력 측 시간 마커 문자열을 생성. 출력 측(GT)은 무관.
+    # Build the input-side time-marker string for tti_time_format. The output (GT) is unaffected.
     if tti_time_format == "natural_text":
         return sec_to_natural_text_str(sec_start)
     if tti_time_format == "from_to":
@@ -90,7 +90,7 @@ def make_time_marker_string(sec_start: float, tti_time_format: str,
     return sec_to_time_token_str(sec_start)
 
 
-# 모드별 청크당 마커 토큰 수
+# Marker tokens per chunk for each mode
 _TIME_MARKER_TOKEN_LEN = {
     "off": 0,
     "special_token": 5,
@@ -603,7 +603,7 @@ class LazySupervisedDataset(Dataset):
 
     def __getitem__(self, i) -> Dict[str, torch.Tensor]:
         num_base_retries = 3
-        max_fallback = 20  # 다른 random sample 도 최대 20 번까지만 시도. recursion → iterative.
+        max_fallback = 20  # try at most 20 other random samples (iterative, no recursion)
         current_i = i
 
         for fallback_round in range(max_fallback + 1):
@@ -622,7 +622,7 @@ class LazySupervisedDataset(Dataset):
             print(f"Failed to fetch sample {current_i}. Try another sample. (fallback {fallback_round+1}/{max_fallback})")
             current_i = random.randint(0, len(self) - 1)
 
-        # 모든 fallback 실패: dummy 반환하면 collator 에서 더 깨질 수 있으니 차라리 raise
+        # All fallbacks failed: raise instead of returning a dummy that would break the collator
         raise RuntimeError(
             f"Failed to fetch any valid sample after {max_fallback} fallbacks "
             f"(started from index {i}). Check dataset integrity."
@@ -689,8 +689,8 @@ class LazySupervisedDataset(Dataset):
                     )
                     video = [video]
                 if "use_audio" in sources[0] and sources[0]["use_audio"]:
-                    # Sample 에 별도 audio 파일이 있으면 그것을 우선 사용 (line 622+ 의 분기에서 처리).
-                    # video_file 에서 audio 추출은 .wav 가 없을 때만 fallback.
+                    # A separate audio file in the sample takes precedence (handled in the branch below).
+                    # Audio is extracted from video_file only when no .wav is given.
                     if "audio" in sources[0]:
                         audio, audio_lengths = None, None
                     else:
@@ -809,7 +809,7 @@ class LazySupervisedDataset(Dataset):
             else:
                 data_dict["train_type"] = self.data_args.train_type
 
-            # Sample-level metadata (Ordinal loss 분기 & 모니터링용)
+            # Sample-level metadata (kept for logging)
             raw_sample = self.list_data_dict[i] if isinstance(i, int) else self.list_data_dict[i[0]]
             source_id = raw_sample.get("source_id", "unknown")
             task_type = raw_sample.get("task_type", "unknown")

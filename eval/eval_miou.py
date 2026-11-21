@@ -1,30 +1,30 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-eval_miou.py — multi-segment temporal-grounding 통합 평가기 (3-method).
+eval_miou.py - multi-segment temporal grounding evaluator (3 methods).
 
-입력: inference 결과(test_results_rank0.json; 단일 파일 또는 하위 재귀 탐색할 폴더)
-출력: 각 결과 파일 옆에 세 개의 summary JSON (구조 동일, method/IoU 계산만 다름)
-  - pairwise_miou_summary.json : MUSEG 방식 (GT 세그먼트별 best-match pred IoU)
-  - union_miou_summary.json    : 기존 방식   (GT 세그먼트 vs 겹치는 pred 합집합 IoU)
-  - sample_miou_summary.json   : R-AVST all_iou 방식 (전체 GT merge vs 전체 pred merge)
+Input:  inference results (test_results_rank0.json; a single file or a folder searched recursively)
+Output: three summary JSONs next to each result file (same structure, different IoU method)
+  - pairwise_miou_summary.json : MUSEG style (best-match pred IoU per GT segment)
+  - union_miou_summary.json    : union style (GT segment vs union of overlapping preds)
+  - sample_miou_summary.json   : R-AVST all_iou style (merged GT vs merged pred per sample; paper mIoU)
 
-집계 단위: 전부 '샘플 단위' (샘플마다 값 산출 후 샘플 평균).
+Aggregation is per sample (compute per sample, then average over samples).
 
-pred 파싱:
-  - 기본       : SALMONN 시간 토큰  "From <t..> to <t..>. ..."
-  - --natural  : 관대 파싱 (시간토큰 + HH:MM:SS / M:SS / X.X-Y.Y / from X to Y seconds /
-                 second{X} to second{Y} / first N seconds 등 다양한 자연어 출력)
-  - CoT 출력(<answer>...</answer> 포함)이면 <answer> 안의 내용만 파싱 (자동 감지).
+Prediction parsing:
+  - default    : video-SALMONN time tokens  "From <t..> to <t..>. ..."
+  - --natural  : lenient (time tokens + HH:MM:SS / M:SS / X.X-Y.Y / from X to Y seconds /
+                 second{X} to second{Y} / first N seconds and other natural-language outputs)
+  - CoT outputs (with <answer>...</answer>) are parsed inside <answer> only (auto-detected).
 
-GT 소스 해석 순서:
-  1) --test_json 명시 시 그 파일
-  2) results 항목에 gt_segments 가 박혀 있으면 그대로 사용
-  3) results 옆 리프 폴더명으로 <test_dir>/<리프>.json (또는 <리프>/_full.json)
-  매칭: (basename(id/video), gt_label) 키 → 실패 시 동일 길이일 때 positional fallback.
+GT source, in order:
+  1) the file given by --test_json
+  2) gt_segments embedded in the result entries
+  3) <test_dir>/<leaf>.json (or <leaf>/_full.json) named after the result's parent folder
+  Matching: (basename(id/video), gt_label) key; positional fallback only when allowed.
 
-사용:
-  python3 eval_miou.py <OUT_DIR 또는 test_results_rank0.json> --test_json <GT.json>
+Usage:
+  python3 eval_miou.py <OUT_DIR or test_results_rank0.json> --test_json <GT.json>
   python3 eval_miou.py <OUT_DIR> --test_json <GT.json> --natural
 """
 import argparse
@@ -43,9 +43,9 @@ OUT_NAMES = {
 MAX_TIME_DEFAULT = 9999.9
 
 
-# ============================== pred 파싱 ==============================
+# ============================== prediction parsing ==============================
 def extract_answer_scope(text):
-    """CoT: <answer>...</answer> 가 있으면 그 안의 내용만, 없으면 전체 텍스트."""
+    """CoT: return the content of <answer>...</answer> if present, otherwise the whole text."""
     spans = re.findall(r"<answer>(.*?)</answer>", text or "", re.DOTALL | re.IGNORECASE)
     if spans:
         return " ".join(spans)
@@ -53,15 +53,15 @@ def extract_answer_scope(text):
 
 
 def _fix(s, e, max_time):
-    """비정상 구간(e<=s)은 보수적으로 최소 0.1s 만 부여(점수 이득 최소화)."""
+    """Invalid intervals (e<=s) get a conservative minimum length of 0.1 s."""
     if e <= s:
         e = min(s + 0.1, max_time)
     return [min(s, max_time), min(e, max_time)]
 
 
-# ---- 시간 토큰 구간 ----
-# "From <t..> to <t..>" 뿐 아니라 "<t..> - <t..>"(dash) 등 구분자 변형도 매칭.
-# (v0 프롬프트엔 answer-format 지시가 없어 모델이 'in <t..> - <t..> seconds' 식으로 냄)
+# ---- time-token intervals ----
+# Matches "From <t..> to <t..>" and separator variants such as "<t..> - <t..>" (dash)
+# (prompts without an answer-format instruction may yield 'in <t..> - <t..> seconds').
 _TOKTIME = r"(?:<t\d>)+(?:<tdot>(?:<t\d>)+)?"
 _TOK_SEG = re.compile(rf"({_TOKTIME})\s*(?:to|-|–|—|~)\s*({_TOKTIME})", re.IGNORECASE)
 
@@ -89,7 +89,7 @@ def parse_tokens(text, max_time):
     return out
 
 
-# ---- 자연어 관대 파싱 ----
+# ---- lenient natural-language parsing ----
 _HMS = r"(?:\d+:)?\d{1,2}:\d{2}"
 
 
@@ -101,12 +101,12 @@ def _hms_to_sec(tok):
 
 
 def parse_natural(text, max_time):
-    """다양한 자연어 시간 출력 → [[s,e]]. consumed 마스킹으로 중복 매칭 방지.
+    """Natural-language time outputs -> [[s,e]]. A consumed mask prevents double matches.
 
-    우선순위(구체적 → 일반): 시간토큰 → HH:MM:SS → M:SS → second{} → from X to Y(sec) →
+    Priority (specific -> general): time tokens -> HH:MM:SS -> M:SS -> second{} -> from X to Y(sec) ->
     X-Y seconds → first N seconds.
     """
-    segs = list(parse_tokens(text, max_time))  # 토큰이 섞여 있어도 회수
+    segs = list(parse_tokens(text, max_time))  # recover time tokens even inside prose
     consumed = [False] * len(text)
 
     def grab(pattern, conv):
@@ -120,7 +120,7 @@ def parse_natural(text, max_time):
                 for i in range(a, b):
                     consumed[i] = True
 
-    # HH:MM:SS - HH:MM:SS  (3-필드 우선)
+    # HH:MM:SS - HH:MM:SS  (3 fields first)
     grab(r"(\d{1,2}:\d{2}:\d{2})\s*(?:to|-|–|—|~)\s*(\d{1,2}:\d{2}:\d{2})",
          lambda m: _fix(_hms_to_sec(m.group(1)), _hms_to_sec(m.group(2)), max_time))
     # M:SS (to|-|...) M:SS
@@ -135,7 +135,7 @@ def parse_natural(text, max_time):
     # X-Y seconds
     grab(r"\b(\d+(?:\.\d+)?)\s*(?:to|-|–|—)\s*(\d+(?:\.\d+)?)\s*(?:seconds|secs|sec)\b",
          lambda m: _fix(float(m.group(1)), float(m.group(2)), max_time))
-    # X.X-Y.Y  (소수 초 구간, 단위어 없는 prose 안 포함)
+    # X.X-Y.Y  (decimal-second ranges, also inside prose without a unit)
     grab(r"(\d+(?:\.\d+)?)\s*(?:to|-|–|—)\s*(\d+(?:\.\d+)?)",
          lambda m: _fix(float(m.group(1)), float(m.group(2)), max_time))
     # first N seconds -> [0, N]
@@ -151,7 +151,7 @@ def parse_pred(raw, natural, max_time):
     return parse_natural(scope, max_time) if natural else parse_tokens(scope, max_time)
 
 
-# ============================== 구간 연산 ==============================
+# ============================== interval operations ==============================
 def tiou(a, b):
     s = max(a[0], b[0])
     e = min(a[1], b[1])
@@ -192,7 +192,7 @@ def intersect_lists(A, B):
 
 
 def union_iou(seg, others):
-    """seg 1개 vs 그와 겹치는 others 들의 합집합 IoU."""
+    """IoU of one segment vs the union of the overlapping others."""
     ov = [o for o in others if min(o[1], seg[1]) > max(o[0], seg[0])]
     if not ov:
         return 0.0
@@ -208,7 +208,7 @@ def best_iou(seg, others):
 
 
 def sample_iou_parts(gt, pred):
-    """all_iou(R-AVST): 전체 GT merge vs 전체 pred merge → (iou, recall_t, precision_t)."""
+    """all_iou (R-AVST): merged GT vs merged pred -> (iou, recall_t, precision_t)."""
     G = merge_intervals(gt)
     P = merge_intervals(pred)
     inter = total_len(intersect_lists(G, P))
@@ -228,7 +228,7 @@ def _clip01(x):
     return max(0.0, min(1.0, x))
 
 
-# ============================== method별 집계 ==============================
+# ============================== per-method aggregation ==============================
 def _gt_ious(gt, pred, method):
     if method == "pairwise":
         return [best_iou(g, pred) for g in gt]
@@ -246,29 +246,29 @@ def _frac_ge(arr, th):
 
 
 def compute_method_block(samples, method):
-    """method별 mIoU / Recall / Precision / F1.
+    """mIoU / Recall / Precision / F1 for one method.
 
-    집계 단위 (기존 eval_all_miou_multiseg 의 해당 block 과 일치):
-      - pairwise (Best_IoU, GT세그먼트 단위) : 전체 GT 세그먼트를 한 풀로 평균
-      - union    (Union_IoU, GT세그먼트 단위): 〃
-      - sample   (All_IoU, 샘플 단위)        : 샘플당 all_iou 1개를 샘플 평균
-    Recall = 해당 단위에서 (method-IoU ≥ θ) 비율 → 기존 R@1 과 동일.
-    Precision = pred 측 단위에서 (IoU ≥ θ) 비율, F1 = 2PR/(P+R).
+    Aggregation units:
+      - pairwise (Best_IoU, per GT segment) : averaged over all GT segments
+      - union    (Union_IoU, per GT segment): same
+      - sample   (All_IoU, per sample)      : one all_iou per sample, averaged over samples
+    Recall = fraction of units with method-IoU >= θ (same as R@1).
+    Precision = fraction of prediction-side units with IoU >= θ; F1 = 2PR/(P+R).
     """
     if method == "sample":
-        # All_IoU 는 대칭 집합 IoU(=inter/union) → 샘플당 1값. P=R=F1=(all_iou≥θ 샘플비율).
+        # All_IoU is a symmetric set IoU (inter/union), one value per sample: P = R = F1 = fraction of samples with all_iou >= θ.
         ious = [sample_iou_parts(gt, pred)[0] for gt, pred in samples if gt]
         miou = 100.0 * _mean(ious)
         rec = {str(t): round(100.0 * _frac_ge(ious, t), 4) for t in THRESHOLDS}
         prc = dict(rec)
         f1 = dict(rec)
     else:
-        gt_iou_all, pred_iou_all = [], []   # 전체 GT/pred 세그먼트 풀
+        gt_iou_all, pred_iou_all = [], []   # pooled GT / pred segments
         for gt, pred in samples:
             if not gt:
                 continue
-            gt_iou_all.extend(_gt_ious(gt, pred, method))   # GT 세그먼트별 IoU
-            pred_iou_all.extend(_pred_ious(gt, pred, method))  # pred 세그먼트별 IoU
+            gt_iou_all.extend(_gt_ious(gt, pred, method))   # IoU per GT segment
+            pred_iou_all.extend(_pred_ious(gt, pred, method))  # IoU per predicted segment
         miou = 100.0 * _mean(gt_iou_all)
         rec, prc, f1 = {}, {}, {}
         for t in THRESHOLDS:
@@ -291,25 +291,25 @@ def compute_method_block(samples, method):
 
 
 def compute_count_metrics(samples):
-    """CountF1 및 구성요소(CR*, FMR) — 샘플별 (N_gt, N_pred) 개수만 사용(위치 무관).
+    """CountF1 and its components (CR*, FMR), using only per-sample counts (N_gt, N_pred).
 
-    서브셋(정답 개수 기준):
-      - 멀티  S  = {i : N_gt >= 2}
-      - 싱글  S1 = {i : N_gt == 1}
-      - N_gt == 0 샘플은 양 서브셋 모두에서 제외.
+    Subsets (by GT count):
+      - multi  S  = {i : N_gt >= 2}
+      - single S1 = {i : N_gt == 1}
+      - samples with N_gt == 0 are excluded from both.
 
     1) CR_multi = mean_{i∈S} min(N_gt,N_pred)/max(N_gt,N_pred)
-       chance_floor b = mean_{i∈S} 1/N_gt   ("무조건 1개 찍기"의 기대 점수)
-       CR* = (CR_multi - b)/(1 - b), [0,1] 로 클립(찍기보다 못하면 0).
-    2) FMR = mean_{i∈S1} 1[N_pred >= 2]      (단일을 쪼갠 비율; 낮을수록 좋음)
-       SingleMiss = mean_{i∈S1} 1[N_pred == 0] (파싱 실패/무응답 비율)
+       chance_floor b = mean_{i∈S} 1/N_gt   (expected score of "always predict one")
+       CR* = (CR_multi - b)/(1 - b), clipped to [0,1] (0 if worse than chance).
+    2) FMR = mean_{i∈S1} 1[N_pred >= 2]      (single segments split; lower is better)
+       SingleMiss = mean_{i∈S1} 1[N_pred == 0] (parse failures / no answer)
     3) SingleAcc = mean_{i∈S1} 1[N_pred == 1] = 1 - FMR - SingleMiss
-       N_pred=0(파싱 실패)은 성공으로 치지 않는다 — 파싱 실패가 많은 모델의 OSA 가
-       부풀지 않도록.
-    4) CountF1 = 조화평균(CR*, SingleAcc) = 2·CR*·SingleAcc/(CR*+SingleAcc),
-       분모 0(둘 다 0)이면 CountF1 = 0.
+       Parse failures (N_pred=0) do not count as success, so models with many parse
+       failures do not get an inflated OSA.
+    4) CountF1 = harmonic mean(CR*, SingleAcc) = 2·CR*·SingleAcc/(CR*+SingleAcc),
+       0 when both are 0.
 
-    서브셋이 비면 해당 지표는 None → CountF1 도 None(표에선 '-').
+    An empty subset gives None for its metric, and CountF1 is then None ('-' in tables).
     """
     multi_ratios, multi_floor, single_npred = [], [], []
     for gt, pred in samples:
@@ -344,7 +344,7 @@ def compute_count_metrics(samples):
 
 
 def compute_shared_block(samples):
-    """method 무관 공통: FP/FN(best-match overlap 기준, threshold별), 세그먼트 분포, 파싱."""
+    """Method-independent stats: FP/FN (best-match overlap, per threshold), segment counts, parsing."""
     total_gt = total_pred = 0
     n_fn = {t: 0 for t in THRESHOLDS}
     n_fp = {t: 0 for t in THRESHOLDS}
@@ -405,7 +405,7 @@ def compute_shared_block(samples):
 
 
 def build_summaries(samples, meta):
-    """method별 summary dict 3개 반환 ({method: summary})."""
+    """Return the three per-method summary dicts ({method: summary})."""
     shared = compute_shared_block(samples)
     out = {}
     for method in METHODS:
@@ -425,7 +425,7 @@ def build_summaries(samples, meta):
     return out
 
 
-# ============================== GT 소스 해석 ==============================
+# ============================== GT source resolution ==============================
 def _basename(p):
     return os.path.basename(str(p)) if p else ""
 
@@ -468,21 +468,21 @@ def resolve_gt_json_path(results_file, test_dir):
 
 
 def _gt_from_ref(results, max_time):
-    """GT 를 각 항목 'ref'(SALMONN 시간토큰) 에서 파싱."""
+    """Parse GT from each entry's 'ref' (video-SALMONN time tokens)."""
     gt_list = [parse_tokens(r.get("ref", "") or "", max_time) for r in results]
     return gt_list, sum(1 for g in gt_list if g), sum(1 for g in gt_list if not g)
 
 
 def _gt_from_test_json(results, gt_path, source_tag, allow_positional=False):
-    """test_json 의 gt_segments 매칭.
+    """Match gt_segments from test_json.
 
-    매칭 순서: (video/id, gt_label) 키 → video 단독(모호하지 않을 때) →
-    (allow_positional 일 때만) positional. 묵시적 positional 은 순서 어긋난 결과에서
-    엉뚱한 GT 와 비교하는 사고를 내므로 기본 비활성.
+    Order: (video/id, gt_label) key -> video alone (when unambiguous) ->
+    positional (only with allow_positional). Implicit positional matching compares
+    against the wrong GT when the result order differs, so it is off by default.
     """
     gt_data = _load_json(gt_path)
     key_map, ambiguous = {}, set()          # (video, gt_label) -> segs
-    vid_map, vid_amb = {}, set()            # video -> segs (단독 fallback)
+    vid_map, vid_amb = {}, set()            # video -> segs (video-only fallback)
     for item in gt_data:
         vid = _basename(item.get("video") or item.get("id") or item.get("audio"))
         segs = _coerce_segments(item.get("gt_segments"))
@@ -491,7 +491,7 @@ def _gt_from_test_json(results, gt_path, source_tag, allow_positional=False):
             ambiguous.add(key)
         key_map[key] = segs
         if vid in vid_map and vid_map[vid] != segs:
-            vid_amb.add(vid)               # 같은 video 에 다른 segs → 단독 매칭 불가
+            vid_amb.add(vid)               # same video with different segs -> ambiguous
         vid_map[vid] = segs
 
     gt_list, matched, unmatched, by_pos = [], 0, 0, 0
@@ -509,18 +509,18 @@ def _gt_from_test_json(results, gt_path, source_tag, allow_positional=False):
         else:
             gt_list.append([]); unmatched += 1
     if by_pos:
-        print(f"[WARN] {os.path.basename(gt_path)}: {by_pos} 샘플을 positional 로 매칭 "
-              f"(키/ video 매칭 실패). 순서가 어긋나면 GT 오정렬 위험.")
+        print(f"[WARN] {os.path.basename(gt_path)}: {by_pos} samples matched by position "
+              f"(key/video matching failed). GT is misaligned if the order differs.")
     return gt_list, source_tag, matched, unmatched
 
 
 def build_gt_for_results(results, results_file, args):
-    """GT 소스 자동감지 우선순위:
-    --gt_ref(강제) > embedded(gt_segments) > ref(자동) > --test_json/리프명 test_json.
+    """GT source priority:
+    --gt_ref (forced) > embedded (gt_segments) > ref (auto) > --test_json / leaf-name test_json.
 
-    ref/embedded 가 test_json 보다 우선인 이유: 둘 다 '각 샘플 자신의' GT 라 순서/매칭
-    문제가 없다. test_json 은 (video,gt_label) 매칭에 의존하며, gt_label 없는 결과에서는
-    취약하다(과거 positional fallback 으로 오정렬 사고가 있었음).
+    ref/embedded come first because they are each sample's own GT, so order and
+    matching cannot go wrong. test_json relies on (video, gt_label) matching and is
+    fragile for results without gt_label.
     """
     n = len(results)
     if args.gt_ref:
@@ -531,24 +531,24 @@ def build_gt_for_results(results, results_file, args):
         return gl, "embedded", sum(1 for g in gl if g), sum(1 for g in gl if not g)
     if all(r.get("ref") for r in results):
         gl, m, u = _gt_from_ref(results, args.max_time)
-        # ref 가 실제 SALMONN 토큰 GT 로 파싱될 때만 사용. HH:MM:SS 등 자연어 ref 는
-        # parse_tokens 로 0개 → test_json(gt_segments) 로 폴백.
+        # Use ref only when it parses as video-SALMONN time-token GT. Natural-language refs
+        # (HH:MM:SS etc.) give 0 segments with parse_tokens -> fall back to test_json.
         if m >= 0.5 * n:
             return gl, "ref(auto)", m, u
     gt_path = args.test_json or resolve_gt_json_path(results_file, args.test_dir)
     if not gt_path or not os.path.isfile(gt_path):
         raise FileNotFoundError(
-            f"GT 를 찾을 수 없음 (results={results_file}). embedded gt_segments/ref 없음, "
-            f"리프명 매칭 실패. --test_json 또는 --gt_ref 로 지정하세요. (test_dir={args.test_dir})"
+            f"GT not found (results={results_file}): no embedded gt_segments/ref and no "
+            f"leaf-name match. Pass --test_json or --gt_ref. (test_dir={args.test_dir})"
         )
     gl, src, m, u = _gt_from_test_json(results, gt_path, gt_path, args.allow_positional)
     if u > 0:
-        print(f"[WARN] test_json 매칭 실패 {u}/{n} (gt=[] 로 제외). "
-              f"이 결과가 ref/gt_segments 를 가지면 그쪽이 더 정확합니다.")
+        print(f"[WARN] test_json matching failed for {u}/{n} samples (excluded with gt=[]). "
+              f"If these results carry ref/gt_segments, those are more accurate.")
     return gl, src, m, u
 
 
-# ============================== 한 폴더 평가 ==============================
+# ============================== evaluate one result file ==============================
 def write_and_report(results_file, summaries, args):
     out_dir = args.out_dir or os.path.dirname(os.path.abspath(results_file))
     os.makedirs(out_dir, exist_ok=True)
@@ -588,7 +588,7 @@ def write_and_report(results_file, summaries, args):
 
 
 def _scale_percent(segs, dur, max_time):
-    """avicuna 류: pred 구간이 영상 길이 대비 %(0~100) → 초로 환산."""
+    """Predictions given as a percentage (0~100) of the video duration -> seconds."""
     if not dur:
         return []
     return [_fix(s / 100.0 * dur, e / 100.0 * dur, max_time) for s, e in segs]
@@ -624,25 +624,25 @@ def find_results_files(root):
 
 def main():
     ap = argparse.ArgumentParser(
-        description="multi-segment 통합 mIoU 평가 (pairwise/union/sample 3-method)")
-    ap.add_argument("results", help="test_results_rank0.json 또는 하위 재귀 탐색할 폴더")
-    ap.add_argument("--test_json", default=None, help="GT json (생략 시 embedded/리프명 자동)")
-    ap.add_argument("--test_dir", default=None, help="GT json 탐색 디렉토리 (기본 <WS>/data/test)")
+        description="Multi-segment temporal grounding mIoU (pairwise/union/sample)")
+    ap.add_argument("results", help="test_results_rank0.json or a folder to search recursively")
+    ap.add_argument("--test_json", default=None, help="GT json (default: embedded GT / leaf-name match)")
+    ap.add_argument("--test_dir", default=None, help="folder for leaf-name GT lookup (default <repo>/data/test)")
     ap.add_argument("--natural", action="store_true",
-                    help="관대 파싱(HH:MM:SS/M:SS/소수초/second{} 등). 기본 off=시간토큰만")
-    ap.add_argument("--label", default="", help="summary 에 기록할 모델 라벨 (예: CKPT_MODEL_ID)")
-    ap.add_argument("--testset", default="", help="summary 에 기록할 testset 태그")
+                    help="lenient parsing (HH:MM:SS/M:SS/seconds/second{} ...). Default: time tokens only")
+    ap.add_argument("--label", default="", help="model label stored in the summary")
+    ap.add_argument("--testset", default="", help="test-set tag stored in the summary")
     ap.add_argument("--gt_ref", action="store_true",
-                    help="GT 를 각 항목 'ref'(SALMONN 시간토큰)에서 파싱 (강제). 미지정 시 자동감지")
+                    help="parse GT from each entry's 'ref' (time tokens), forced. Default: auto-detect")
     ap.add_argument("--pred_percent", action="store_true",
-                    help="pred 구간을 영상길이 대비 %%로 보고 duration 곱해 초 환산 (avicuna)")
+                    help="predictions are %% of the video duration; convert to seconds")
     ap.add_argument("--allow_positional", action="store_true",
-                    help="test_json 매칭 실패 시 순서대로(positional) GT 끼움 허용 (위험; 기본 off)")
+                    help="allow positional GT matching when test_json matching fails (risky; default off)")
     ap.add_argument("--duration_key", default="duration",
-                    help="--pred_percent 환산용 duration 필드명")
+                    help="duration field used by --pred_percent")
     ap.add_argument("--max_time", type=float, default=MAX_TIME_DEFAULT)
-    ap.add_argument("--out_dir", default=None, help="단일 결과 파일일 때만 의미. 생략 시 결과 옆")
-    ap.add_argument("--progress_log", default=None, help="JSONL 스냅샷 append")
+    ap.add_argument("--out_dir", default=None, help="only for a single result file; default: next to the result")
+    ap.add_argument("--progress_log", default=None, help="append JSONL snapshots here")
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args()
 
@@ -651,13 +651,13 @@ def main():
 
     files = find_results_files(args.results)
     if not files:
-        raise SystemExit(f"[에러] test_results_rank0.json 을 찾지 못함: {args.results}")
-    # 폴더 재귀 모드에서는 out_dir 를 각 결과 옆으로 강제(혼선 방지)
+        raise SystemExit(f"[error] no test_results_rank0.json found: {args.results}")
+    # In folder mode, always write next to each result (avoids mixing outputs)
     if len(files) > 1:
         args.out_dir = None
 
     if not args.quiet:
-        print(f"[INFO] {len(files)} 개 결과 파일  (natural={args.natural})")
+        print(f"[INFO] {len(files)} result files  (natural={args.natural})")
 
     for rf in files:
         try:

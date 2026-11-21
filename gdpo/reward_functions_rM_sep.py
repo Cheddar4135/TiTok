@@ -2,43 +2,41 @@
 # -*- coding: utf-8 -*-
 """
 reward_functions_rM_sep.py
-  학습신호 세분화(separated) 버전 — MUSEG r_M 처럼 하나로 합치지 않고,
-  채널을 4개로 분리해 GDPO 가 각 신호를 독립적으로(채널별 group-normalize) 학습하게 한다.
+  Separated-channel reward: instead of merging into one MUSEG r_M, the signal is
+  split into four channels so that GDPO normalizes each channel within its group.
 
-    채널: {format, len, global, local}
-      format — 'From X to Y.' strict 구조 준수 (개수 중립: 정형 세그먼트 나열이면 1.0)
-      len    — pred 세그먼트 개수 == gt 세그먼트 개수 면 1.0, 아니면 0.0 (binary; env 로 graded 토글)
-      global — MUSEG global matching = F1(precision, recall)  ← precision 항 내장
-      local  — 세그먼트별 NGIoU best-match 평균 / max(n_pred, n_gt)
+    Channels: {format, len, global, local}
+      format - strict 'From X to Y.' structure (count neutral: any number of well-formed segments = 1.0)
+      len    - 1.0 if #pred segments == #gt segments else 0.0 (binary; graded via env)
+      global - MUSEG global matching = F1(precision, recall), includes a precision term
+      local  - per-segment NGIoU best-match average / max(n_pred, n_gt)
 
-  배경 / 의도 (multi-segment 붕괴 대응):
-    1) 기존 r_G(NGIoU, precision 없음)는 'GT 전체를 덮는 한 개의 큰 세그먼트'를
-       싸게 보상해 1-세그먼트 collapse 의 attractor 가 됐다. → global 을 MUSEG 원본
-       F1 로 되돌려 precision 항을 복원, 큰-한방 전략을 무력화한다.
-    2) r_G/r_L 을 r_M(0.5 합)으로 뭉치지 않고 따로 둔다. GDPO 의 _compute_gdpo_advantages
-       가 채널마다 group 내 표준화 → 합치면 묻히던 r_L(위치) 신호가 단위분산으로 보존된다.
-    3) len 채널로 '개수' 신호를 명시한다 (r_L 의 max(n) 분모와 보강).
+  Motivation (multi-segment collapse):
+    1) The old r_G (NGIoU, no precision) cheaply rewarded one large segment covering all
+       GT segments, which attracted the policy to single-segment collapse. global uses the
+       original MUSEG F1 so the precision term penalizes that strategy.
+    2) r_G and r_L are kept separate instead of averaged into r_M; GDPO standardizes each
+       channel within the group, so the local signal is no longer drowned out.
+    3) The len channel adds an explicit segment-count signal.
 
-  ⚠️ binary len 의 한계:
-       이미 1-세그먼트로 무너진 그룹에선 모든 롤아웃이 len=0 → std=0 → advantage=0
-       → 회복 gradient 없음(GDPO group-norm 의 구조적 한계). reward 설계는 '예방'이고,
-       회복엔 clip-higher / temperature / num_generations(탐색 유지)가 함께 필요하다.
-       near-collapse 에서 gradient 를 살리고 싶으면 env LEN_REWARD_MODE=graded 사용.
+  Limitation of binary len:
+       In a group that already collapsed to one segment every rollout gets len=0, so
+       std=0 and the advantage is 0 (no recovery gradient). Use LEN_REWARD_MODE=graded
+       to keep a gradient near collapse.
 
-  ⚠️ 이 모듈을 쓰려면 trainer.load_reward_module 이 REWARD_CHANNELS 를 인식해야 한다
-     (gdpo_trainer.py 의 load_reward_module 에 'if hasattr(mod, "REWARD_CHANNELS")' 분기 필요).
+  The trainer picks up REWARD_CHANNELS through load_reward_module.
 
-  원본 reward_functions.py 는 절대 수정하지 않고 import 만 한다.
+  reward_functions.py is imported, not modified.
 """
 import os
 import re
 from typing import List, Tuple
 
-# 원본에서 그대로 재사용 (원본 무수정):
-#   decode_vtg_time : VTG time-token → 초
-#   _merge_intervals: 겹침 제거 union
-#   _SEG_CAPTURE_RE : pred 세그먼트 파싱 (정수 1~4자리 + <tdot> + 소수 1자리)
-#   ngiou_pair      : 단일 (gt, pred) NGIoU (local 용, 원본 공식 그대로)
+# Reused from reward_functions.py:
+#   decode_vtg_time : VTG time tokens -> seconds
+#   _merge_intervals: union of overlapping intervals
+#   _SEG_CAPTURE_RE : segment parser (1-4 integer digits + <tdot> + 1 decimal digit)
+#   ngiou_pair      : NGIoU of one (gt, pred) pair (used by local)
 from reward_functions import (
     decode_vtg_time,
     _merge_intervals,
@@ -46,17 +44,17 @@ from reward_functions import (
     ngiou_pair,
 )
 
-# ── len 채널 모드: binary(기본, 요구사항대로) / graded(near-collapse gradient 생존) ──
-#   launch 시점 env 값으로 고정 (이미 import 된 프로세스엔 영향 없음).
+# len channel mode: binary (default) / graded (keeps a gradient near collapse).
+#   Read once at import time from the environment.
 LEN_REWARD_MODE = os.environ.get("LEN_REWARD_MODE", "binary").lower()
 
 
 # ============================================================
-# 파싱 — IoU/개수 계열은 표준 capture 사용 (포맷 엄격성은 format 채널 전담)
+# Parsing: IoU/count channels use the standard capture (format strictness is the format channel's job)
 # ============================================================
 
 def _parse(completion: str) -> List[Tuple[float, float]]:
-    """completion 에서 (start, end) 세그먼트 추출 (start<end 인 것만)."""
+    """Extract (start, end) segments with start < end from a completion."""
     if not isinstance(completion, str):
         return []
     text = completion.replace("<|im_end|>", "").strip()
@@ -70,12 +68,12 @@ def _parse(completion: str) -> List[Tuple[float, float]]:
 
 
 # ============================================================
-# 1) format — strict + 개수 중립
+# 1) format - strict, count neutral
 # ============================================================
-# 응답 전체가 'From <t\d>{3}<tdot><t\d> to <t\d>{3}<tdot><t\d>.' 의
-# 1개 이상 나열로만 구성돼야 1.0, 아니면 0.0.
-#   - 세그먼트가 여러 개여도 전부 정형이면 1.0 → 개수를 벌하지 않음(multi-seg 억제 방지).
-#   - 잡음(세그먼트 외 토큰)이 끼면 0.0.
+# 1.0 only if the whole response is one or more
+# 'From <t\d>{3}<tdot><t\d> to <t\d>{3}<tdot><t\d>.' segments, else 0.0.
+#   - Any number of well-formed segments scores 1.0 (no penalty on multiple segments).
+#   - Any extra text scores 0.0.
 _STRICT_SEG = r"[Ff]rom\s+(?:<t\d>){3}<tdot><t\d>\s+to\s+(?:<t\d>){3}<tdot><t\d>\s*\.\s*"
 _STRICT_FULL = re.compile(r"^\s*(?:" + _STRICT_SEG + r")+$")
 
@@ -90,13 +88,13 @@ def format_reward(completion: str, **kwargs) -> float:
 
 
 # ============================================================
-# 2) len — pred 세그먼트 개수 vs gt 세그먼트 개수
+# 2) len - number of predicted vs GT segments
 # ============================================================
 
 def len_matching_reward(completion: str, gt_intervals, **kwargs) -> float:
-    """개수 일치 보상.
-      binary(기본): n_pred == n_gt → 1.0, else 0.0
-      graded(env) : 1 - |n_pred - n_gt| / max(n_pred, n_gt, 1)  (near-collapse 에서 gradient 생존)
+    """Segment-count reward.
+      binary (default): 1.0 if n_pred == n_gt else 0.0
+      graded (env)    : 1 - |n_pred - n_gt| / max(n_pred, n_gt, 1)
     """
     if not gt_intervals:
         return 0.0
@@ -110,11 +108,11 @@ def len_matching_reward(completion: str, gt_intervals, **kwargs) -> float:
 
 
 # ============================================================
-# 3) global — MUSEG global matching (F1, precision 내장)
+# 3) global - MUSEG global matching (F1 with a precision term)
 # ============================================================
-# MUSEG 원본(reward_global_matching)과 동일: pred union 을 merge 한 뒤
+# Same as MUSEG reward_global_matching: merge the predicted union, then
 #   P = overlap / Σpred,  R = overlap / Σgt,  F1 = 2PR/(P+R)
-# precision 항(Σpred 분모) 덕에 over-prediction(큰 한 방/헛쏨)이 직접 감점된다.
+# the precision term (sum of pred lengths in the denominator) penalizes over-prediction.
 
 def global_reward(completion: str, gt_intervals, **kwargs) -> float:
     if not gt_intervals:
@@ -122,7 +120,7 @@ def global_reward(completion: str, gt_intervals, **kwargs) -> float:
     preds = _parse(completion)
     if not preds:
         return 0.0
-    pred_u = _merge_intervals(preds)              # MUSEG: pred 겹침 제거
+    pred_u = _merge_intervals(preds)              # MUSEG: merge overlapping predictions
     gt = list(gt_intervals)
     all_sel = sum(e - s for s, e in pred_u)
     all_gt = sum(e - s for s, e in gt)
@@ -136,12 +134,12 @@ def global_reward(completion: str, gt_intervals, **kwargs) -> float:
 
 
 # ============================================================
-# 4) local — 세그먼트별 NGIoU best-match
+# 4) local - per-segment NGIoU best match
 # ============================================================
-# 정렬-순차 페어링은 세그먼트 하나만 어긋나도 연쇄 오정렬되어 multi-seg 에 취약하다.
-# → greedy best-match (각 pred 를 미사용 gt 중 NGIoU 최대인 것과 매칭) 후
-#   분모 max(n_pred, n_gt) 로 평균 = over/under-prediction 양쪽에 개수 페널티.
-#   NGIoU pair 공식 자체는 원본(ngiou_pair) 그대로.
+# Sorted sequential pairing breaks when one segment is off, so instead:
+# greedy best match (each pred to the unused gt with the highest NGIoU), then
+#   average over max(n_pred, n_gt), penalizing both over- and under-prediction.
+#   The pairwise NGIoU formula is the original ngiou_pair.
 
 def local_reward(completion: str, gt_intervals, **kwargs) -> float:
     if not gt_intervals:
@@ -170,11 +168,10 @@ def local_reward(completion: str, gt_intervals, **kwargs) -> float:
 
 
 # ============================================================
-# trainer 가 읽는 채널 스펙 — (name, fn, needs_gt)
+# Channel spec read by the trainer: (name, fn, needs_gt)
 # ============================================================
-# load_reward_module 이 REWARD_CHANNELS 를 우선 사용하도록 분기 필요(아래 함수명/형식 고정).
-# reward_weights 는 [format, len, global, local] 순서로 매칭됨 (예: [1,1,1,1]).
-iou_reward = global_reward   # 하위호환: 레거시 load_reward_module 의 'iou' 슬롯
+# reward_weights follow the order [format, len, global, local].
+iou_reward = global_reward   # legacy 'iou' slot of load_reward_module
 REWARD_CHANNELS = [
     ("format", format_reward,        False),
     ("len",    len_matching_reward,  True),

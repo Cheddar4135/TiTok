@@ -14,7 +14,6 @@
 
 # Adopted from https://github.com/QwenLM/Qwen2.5-VL. The original license is located at 'third-party-license/qwenvl.txt'.
 
-# 06.28 batch 사용을 위한 수정 (기존 trainer 작동엔 영향 x)
 
 import os
 import copy
@@ -38,15 +37,15 @@ import torch
 from torch.utils.data import Dataset
 from PIL import Image
 try:
-    # DISABLE_TORCHCODEC=1 → decord 강제. torchcodec 미설치 서버에서 학습된 baseline 과
-    # 프레임 샘플링(개수/인덱스)을 맞추기 위함 (두 경로의 frame_idx 계산식이 다름).
+    # DISABLE_TORCHCODEC=1 forces decord, to match the frame sampling (count/indices) of
+    # baselines trained without torchcodec (the two paths compute frame_idx differently).
     if os.environ.get("DISABLE_TORCHCODEC", "0").lower() in ("1", "true", "yes", "on"):
         raise ImportError("DISABLE_TORCHCODEC=1")
     from torchcodec.decoders import VideoDecoder, AudioDecoder
 except (ImportError, RuntimeError) as _e:
-    # torchcodec이 PyTorch ABI/FFmpeg과 안 맞아 로드 실패 시
-    # VideoDecoder 경로는 decord로 자동 fallback되고,
-    # AudioDecoder는 process_audio에서 sf+soxr로 대체됐으므로 None으로 둬도 무해.
+    # If torchcodec fails to load (PyTorch ABI / FFmpeg mismatch), VideoDecoder falls back
+    # to decord and audio is decoded with soundfile + soxr in process_audio,
+    # so leaving AudioDecoder as None is harmless.
     print(f"[dataset] torchcodec unavailable ({type(_e).__name__}); falling back to decord/soundfile")
     VideoDecoder = None
     AudioDecoder = None
@@ -68,8 +67,7 @@ local_rank = None
 
 
 def sec_to_time_token_str(sec: float) -> str:
-    # 초 → XXX.Y 포맷의 5개 타임토큰 문자열. 범위 0.0~999.9, 정밀도 0.1초.
-    # (기존 XXXX.Y 6토큰에서 최상위 정수자리(천의 자리) 제거 → 5토큰.)
+    # Seconds -> 5 time tokens in XXX.Y format. Range 0.0~999.9 s, precision 0.1 s.
     sec = max(0.0, min(999.9, sec))
     tenths = round(sec * 10)
     i = tenths // 10
@@ -79,23 +77,23 @@ def sec_to_time_token_str(sec: float) -> str:
 
 
 def sec_to_natural_text_str(sec: float) -> str:
-    # 초 → 'second{XXX.Y}' 형식. zero-pad 3자리 정수부 + '.Y' 소수부 = 8 토큰 고정
+    # Seconds -> 'second{XXX.Y}': zero-padded 3-digit integer + '.Y' = always 8 tokens
     # (Qwen2.5 BPE: ['second','{','D','D','D','.','D','}']).
-    # 범위 0.0~999.9, 정밀도 0.1초 — special_token(XXX.Y, 천의 자리 제거)과 자릿수 정합.
+    # Range 0.0~999.9 s, precision 0.1 s (same digits as special_token).
     sec = max(0.0, min(999.9, sec))
     return f"second{{{sec:05.1f}}}"
 
 
 def sec_to_from_to_str(sec_start: float, sec_end: float) -> str:
-    # (start, end) → 'From <t*>×6 to <t*>×6' (출력 GT 와 동일 포맷). 16 토큰 고정.
+    # (start, end) -> 'From <t*>x5 to <t*>x5' (same format as the output). Always 14 tokens.
     # Qwen2.5 BPE: ['From',' ',<t>×6,' ','to',' ',<t>×6] = 16
     return f"From {sec_to_time_token_str(sec_start)} to {sec_to_time_token_str(sec_end)}"
 
 
 def make_time_marker_string(sec_start: float, tti_time_format: str,
                             sec_end: float = None) -> str:
-    # tti_time_format에 따라 입력 측 시간 마커 문자열을 생성. 출력 측(GT)은 무관.
-    # from_to 모드는 sec_end 도 필요 — 호출부에서 (k+1)*sec_per_grid_t - 0.1 로 계산.
+    # Build the input-side time-marker string for tti_time_format. The output (GT) is unaffected.
+    # from_to also needs sec_end; callers pass (k+1)*sec_per_grid_t - 0.1.
     if tti_time_format == "natural_text":
         return sec_to_natural_text_str(sec_start)
     if tti_time_format == "from_to":
@@ -105,11 +103,11 @@ def make_time_marker_string(sec_start: float, tti_time_format: str,
     return sec_to_time_token_str(sec_start)
 
 
-# 모드별 청크당 마커 토큰 수.
-#   off            : 마커 미삽입 (Qwen2.5-VL 베이스라인) — 길이 0
-#   special_token  : <t0>..<tdot>..<t*> = 5  (XXX.Y, 천의 자리 제거)
-#   natural_text   : 'second{XXX.Y}' = 8 (zero-pad 3자리, special_token 자릿수 정합)
-#   from_to        : 'From <t*>×5 to <t*>×5' = 14 (출력 포맷 정렬; special_token 길이 추종)
+# Marker tokens per chunk for each mode.
+#   off            : no markers (Qwen2.5-VL baseline), length 0
+#   special_token  : <t0>..<tdot>..<t*> = 5 (XXX.Y)
+#   natural_text   : 'second{XXX.Y}' = 8
+#   from_to        : 'From <t*>x5 to <t*>x5' = 14 (same format as the output)
 _TIME_MARKER_TOKEN_LEN = {
     "off": 0,
     "special_token": 5,
@@ -226,10 +224,10 @@ def generate_id_target(
                 parts = content.split("<video>")
                 new_parts = []
                 if audio_lengths is None:
-                    # video-only 경로. 오디오가 없어도 TTI 마커는 여기서 주입한다.
-                    # tti_on 이면 audio 분기와 동일하게 프레임(timestep)별로
-                    #   [마커] + [video_pad ×(H*W/merge²)] 를 인터리빙하되 audio_pad 만 뺀다.
-                    # video_pad 총개수 = T*(H*W/merge²) == prod/merge² 로 기존과 동일(불변식).
+                    # Video-only path. TTI markers are inserted here even without audio:
+                    # with TTI on, interleave per frame (timestep) as in the audio branch,
+                    #   [marker] + [video_pad x (H*W/merge^2)], just without audio_pad.
+                    # Total video_pad count = T*(H*W/merge^2) == prod/merge^2, unchanged (invariant).
                     tti_on = (second_per_grid_ts is not None and tti_time_format != "off")
                     for i in range(len(parts) - 1):
                         new_parts.append(parts[i])
@@ -238,7 +236,7 @@ def generate_id_target(
                             sec_per_grid_t = second_per_grid_ts[i][0]
                             for timestep in range(grid_thw_video[i][0]):
                                 t_start_sec = timestep * sec_per_grid_t
-                                # from_to 마커용 end-time = 다음 청크 시작 - 0.1초 (audio 분기와 동일식)
+                                # from_to end time = next chunk start - 0.1 s (same as the audio branch)
                                 t_end_sec = (timestep + 1) * sec_per_grid_t - 0.1
                                 replacement += make_time_marker_string(
                                     t_start_sec, tti_time_format, sec_end=t_end_sec
@@ -268,8 +266,8 @@ def generate_id_target(
                         for timestep in range(grid_thw_video[i][0]):
                             if sec_per_grid_t is not None and tti_time_format != "off":
                                 t_start_sec = timestep * sec_per_grid_t
-                                # from_to 마커는 end-time 도 필요 — "다음 청크 시작 - 0.1초"
-                                # (등간격 청크 가정). 마지막 청크도 동일 식 → t_T - 0.1.
+                                # from_to markers also need an end time: "next chunk start - 0.1 s"
+                                # (equal-length chunks). The last chunk uses the same formula: t_T - 0.1.
                                 t_end_sec = (timestep + 1) * sec_per_grid_t - 0.1
                                 replacement += make_time_marker_string(
                                     t_start_sec, tti_time_format, sec_end=t_end_sec
@@ -411,7 +409,7 @@ class LazySupervisedDataset(Dataset):
         else:
             self.get_rope_index = get_rope_index_2
 
-        # TTI input-side time marker 모드. data_args에서 가져옴; default=off.
+        # TTI input-side time-marker mode from data_args; default off.
         self.tti_time_format = getattr(data_args, "tti_time_format", "off")
         assert self.tti_time_format in _TIME_MARKER_TOKEN_LEN, (
             f"Unknown tti_time_format: {self.tti_time_format}. "
@@ -419,13 +417,13 @@ class LazySupervisedDataset(Dataset):
         )
 
         if self.tti_time_format == "off":
-            # 베이스라인 — 마커 미삽입. rope2d 두 인자 모두 None 으로 둬서 비활성.
+            # Baseline: no markers. Both rope2d arguments stay None (disabled).
             self.time_marker_token_len = None
             self.time_token_id_range = None
             rank0_print("[TTI] mode=off (baseline, no time markers inserted)")
         elif self.tti_time_format == "special_token":
-            # 청크당 6토큰 + ID 범위로 식별. ID 11개는 pre-baked 체크포인트에서
-            # 연속으로 부여되므로 (lo, hi) 튜플로 충분.
+            # Markers are identified by length and token-id range. The 11 time-token ids are
+            # contiguous in the checkpoint, so a (lo, hi) tuple is enough.
             self.time_marker_token_len = _TIME_MARKER_TOKEN_LEN[self.tti_time_format]
             t0_id = tokenizer.convert_tokens_to_ids("<t0>")
             tdot_id = tokenizer.convert_tokens_to_ids("<tdot>")
@@ -439,10 +437,10 @@ class LazySupervisedDataset(Dataset):
                 f"id_range={self.time_token_id_range}"
             )
         elif self.tti_time_format == "natural_text":
-            # natural_text: rope2d는 ~(is_video|is_audio) 마스크로 마커 식별.
+            # natural_text: rope2d identifies markers with the ~(is_video|is_audio) mask.
             self.time_marker_token_len = _TIME_MARKER_TOKEN_LEN[self.tti_time_format]
             self.time_token_id_range = None
-            # 길이 불변 검증: 'second{XXXX.Y}' 가 실제로 9 토큰인지 sanity check.
+            # Length invariance check: 'second{XXX.Y}' must always have the expected length.
             sample_lens = set()
             for s in [0.0, 9.9, 99.9, 999.9, 9999.9, 1234.5]:
                 ids = tokenizer.encode(sec_to_natural_text_str(s), add_special_tokens=False)
@@ -457,16 +455,15 @@ class LazySupervisedDataset(Dataset):
                 f"sample='{sec_to_natural_text_str(15.6)}'"
             )
         else:
-            # from_to: 'From <t*>×6 to <t*>×6' = 16 토큰 고정. 출력 GT 와 동일 포맷이라
-            # 모델이 본 적 없는 마커 형식이어도 zero-shot 으로 잘 처리될 가능성.
-            # rope2d 는 natural_text 와 동일하게 ~(is_video|is_audio) 마스크 사용
-            # (special-token + 일반 텍스트 혼재).
+            # from_to: 'From <t*>x5 to <t*>x5', fixed length, same format as the output.
+            # rope2d uses the ~(is_video|is_audio) mask, as for natural_text
+            # (special tokens mixed with plain text).
             assert self.tti_time_format == "from_to", (
                 f"unsupported tti_time_format: {self.tti_time_format}"
             )
             self.time_marker_token_len = _TIME_MARKER_TOKEN_LEN[self.tti_time_format]
             self.time_token_id_range = None
-            # 길이 불변 검증: (start, end) 다양한 조합에서 16 토큰인지 확인.
+            # Length invariance check over several (start, end) pairs.
             sample_lens = set()
             for s, e in [(0.0, 0.1), (0.0, 1.9), (9.9, 10.0), (99.9, 1000.0),
                          (1000.0, 9999.9), (1234.5, 5678.9)]:
@@ -482,9 +479,9 @@ class LazySupervisedDataset(Dataset):
                 f"sample='{sec_to_from_to_str(15.6, 17.5)}'"
             )
 
-        # TTI debug dump counter (run_test + debug_interleave_dir 에서만 쓰임)
+        # TTI debug dump counter (used only with run_test + debug_interleave_dir)
         self._debug_dump_count = 0
-        # [TTI-DBG] env TTI_DEBUG=1 로 켜지는 경량 샘플 마커 검증 카운터 (첫 N개만)
+        # [TTI-DBG] counter for lightweight marker checks enabled with env TTI_DEBUG=1 (first N samples)
         self._tti_dbg_count = 0
 
         list_data_dict = []
@@ -520,11 +517,11 @@ class LazySupervisedDataset(Dataset):
         self.tokenizer = tokenizer
         self.list_data_dict = list_data_dict
         self.data_args = data_args
-        # [GDPO Tier1] 비디오 디코드 메모이즈 캐시 (기본 OFF).
-        #   GDPO μ>1(clip-higher)에서 block-repeat 샘플러가 같은 prompt 를 μ 번 흘려보내는데,
-        #   cached 패스는 trainer 가 rollout 캐시를 쓰고 방금 디코드한 비디오를 버린다 → 헛디코딩.
-        #   같은 video_file 을 최근 N개(=video_cache_size)만큼 기억해 재디코드를 생략한다.
-        #   video_cache_size=0 이면 완전 비활성(SFT 등 기존 동작과 byte 단위 동일).
+        # [GDPO] Video decode memo cache (off by default).
+        #   With mu>1 (clip-higher) the block-repeat sampler feeds the same prompt mu times,
+        #   but cached passes reuse the trainer's rollout cache and discard the decoded video.
+        #   Remember the last N (= video_cache_size) video files to skip re-decoding.
+        #   video_cache_size=0 disables it entirely (identical to the original behaviour).
         self._video_cache = OrderedDict()
         self._video_cache_size = int(getattr(data_args, "video_cache_size", 0))
         self.data_args.image_processor.max_pixels = data_args.max_pixels
@@ -615,19 +612,19 @@ class LazySupervisedDataset(Dataset):
         return image_tensor, grid_thw
 
     def process_video(self, video_file):
-        # [GDPO Tier1] video_cache_size>0 이면 최근 디코드 결과를 재사용해 헛디코딩 제거.
-        #   block-repeat(μ>1)가 같은 video_file 을 수 microbatch 안에 다시 요청하므로
-        #   캐시 크기 grad_accum+1 이면 모든 재사용을 잡는다. 캐시 OFF(0)면 기존 동작 그대로.
-        #   ⚠️ 반환 텐서는 downstream(torch.cat)이 in-place 변형하지 않으므로 객체 공유 안전.
+        # [GDPO] With video_cache_size>0, reuse recent decodes to avoid redundant decoding.
+        #   Block-repeat (mu>1) requests the same video_file again within a few microbatches,
+        #   so a cache of grad_accum+1 catches every reuse. With the cache off (0) nothing changes.
+        #   The returned tensors are not modified in place downstream (torch.cat), so sharing is safe.
         if self._video_cache_size > 0 and isinstance(video_file, str):
             cached = self._video_cache.get(video_file)
             if cached is not None:
-                self._video_cache.move_to_end(video_file)   # LRU 최신화
+                self._video_cache.move_to_end(video_file)   # LRU refresh
                 return cached
             result = self._process_video_uncached(video_file)
             self._video_cache[video_file] = result
             while len(self._video_cache) > self._video_cache_size:
-                self._video_cache.popitem(last=False)        # 가장 오래된 것 evict
+                self._video_cache.popitem(last=False)        # evict the oldest entry
             return result
         return self._process_video_uncached(video_file)
 
@@ -855,13 +852,13 @@ class LazySupervisedDataset(Dataset):
             else:
                 reject_position_ids = None
 
-            # ── [TTI-DBG] ③ 샘플(=질문)별 마커 삽입 검증 (env TTI_DEBUG=1, rank0, 질문당 1회) ──
-            #   input_ids 에 박힌 time-token 마커를 청크별로 디코드해 "초 리스트"로 출력.
-            #   각 마커 = 연속된 time-token 런(<t..><tdot><t..>) 1개 = 비디오 청크 1개의 시각.
-            #   TTI_DEBUG_SAMPLES: 출력할 질문 수(기본 3, -1 이면 모든 질문에 대해 1회씩).
+            # -- [TTI-DBG] per-sample marker check (env TTI_DEBUG=1, rank 0, once per question) --
+            #   Decode the time-token markers in input_ids per chunk and print them as seconds.
+            #   Each marker = one run of time tokens (<t..><tdot><t..>) = the time of one video chunk.
+            #   TTI_DEBUG_SAMPLES: number of questions to print (default 3, -1 = all).
             _tti_lim = int(os.environ.get("TTI_DEBUG_SAMPLES", "3"))
-            # rank0 판별: dataset 모듈변수 local_rank 는 GDPO 경로에서 None 일 수 있어
-            # env LOCAL_RANK 로 판별(④ rope 와 동일 기준).
+            # Rank-0 check: the module-level local_rank can be None on the GDPO path,
+            # so use env LOCAL_RANK (same as the rope check).
             if (os.environ.get("TTI_DEBUG", "0").lower() in ("1", "true", "yes", "on")
                     and os.environ.get("LOCAL_RANK", "0") == "0"
                     and (_tti_lim < 0 or self._tti_dbg_count < _tti_lim)):
@@ -896,9 +893,9 @@ class LazySupervisedDataset(Dataset):
                         _v = _decode_run(_run)
                         if _v is not None:
                             _secs.append(_v)
-                # natural_text 는 time_token_id_range=None 이라 위 id 기반 _secs 가 항상 비어
-                # 있다. 그대로 두면 마커가 정상 삽입돼도 아래 WARNING 이 매번 오탐으로 뜬다
-                # (GDPO 트레이너 ⑤ 는 이미 텍스트 기반으로 세고 있음). 동일하게 맞춘다.
+                # natural_text has time_token_id_range=None, so the id-based _secs above is always
+                # empty and the WARNING below would fire every time. Count text markers instead
+                # (as the GDPO trainer already does).
                 _n_nat = None
                 if self.tti_time_format == "natural_text":
                     try:
@@ -908,15 +905,15 @@ class LazySupervisedDataset(Dataset):
                         _secs = [float(x) for x in _nat_secs]
                     except Exception as _e:
                         _n_nat = -1
-                        print(f"[TTI-DBG] natural 마커 카운트 실패: {_e}", flush=True)
+                        print(f"[TTI-DBG] natural marker count failed: {_e}", flush=True)
                 _n_chunks = int(video_grid_thw[0][0]) if video_grid_thw else 0
                 print(f"[TTI-DBG] ③ sample idx={i} fmt={self.tti_time_format} "
                       f"chunks={_n_chunks} marker_len={self.time_marker_token_len}"
                       + (f" #natural_markers={_n_nat}" if _n_nat is not None else ""), flush=True)
                 print(f"[TTI-DBG] time markers ({len(_secs)}): {_secs[:30]}", flush=True)
                 if self.tti_time_format != "off" and not _secs:
-                    print("[TTI-DBG] ⚠️ WARNING: tti ON 인데 input_ids 에 time-marker 0개 "
-                          "(데이터 마커 미삽입 의심)", flush=True)
+                    print("[TTI-DBG] WARNING: TTI is on but input_ids contain 0 time markers "
+                          "(markers missing from the data?)", flush=True)
 
             if "image" not in sources[0] and "video" not in sources[0] and "audio" not in sources[0]:
                 grid_thw_merged = None
@@ -964,8 +961,8 @@ class LazySupervisedDataset(Dataset):
             else:
                 data_dict["train_type"] = self.data_args.train_type
 
-            # [dataset-tag] 데이터셋별 리워드 로깅용 — run_test 밖에서도 원본 video 경로 보존.
-            #   (아래 run_test 블록에서도 세팅하지만 학습 땐 run_test=False 라 여기서 항상 채움)
+            # [dataset-tag] keep the original video path for per-dataset reward logging,
+            #   also outside run_test (training runs with run_test=False).
             data_dict["video"] = sources[0].get("video", None)
 
             if self.data_args.run_test:
@@ -990,12 +987,12 @@ class LazySupervisedDataset(Dataset):
                 data_dict.pop("reject_position_ids", None)
                 data_dict.pop("chosen_labels", None)
                 data_dict.pop("reject_labels", None)
-                # ⚠️ audio_lengths 는 pop 하지 않는다.
-                #   rope2d.get_rope_index_25 는 (audio_lengths is not None) 여야 TTI 마커
-                #   인지 분기로 들어간다. 여기서 버리면 generate 시점 rope 가 마커를 무시해
-                #   시간 grounding 이 조용히 깨진다(학습 val 대비 mIoU 반토막).
-                #   input_ids 는 prompt 로 잘리지만 오디오 토큰은 prompt 안에 있으므로
-                #   audio_lengths 는 그대로 유효하다.
+                # Do not pop audio_lengths:
+                #   rope2d.get_rope_index_25 only takes the TTI-aware branch when audio_lengths
+                #   is not None. Dropping it here makes rope ignore the markers at generation
+                #   time and silently breaks temporal grounding (about half the validation mIoU).
+                #   input_ids are cut to the prompt, but the audio tokens are inside the prompt,
+                #   so audio_lengths stays valid.
 
                 # ---- TTI debug dump ----
                 dbg_dir = getattr(self.data_args, "debug_interleave_dir", "") or ""
@@ -1168,8 +1165,8 @@ class DataCollatorForSupervisedDataset(object):
         batch["video_grid_thw"] = video_grid_thw
         batch["audio_feature"] = concat_audios
         batch["audio_lengths"] = audio_lengths
-        # [dataset-tag] 데이터셋별 리워드 로깅용 — video 경로 passthrough (grpo __getitem__ 이 채움).
-        #   additive: 다른 학습/collator 소비자에 무해(미사용 키). SFT 등 video 없으면 None.
+        # [dataset-tag] pass the video path through for per-dataset reward logging (filled by __getitem__).
+        #   Additive: an unused key for other consumers; None when there is no video (e.g. SFT).
         batch["video"] = [instance.get("video", None) for instance in instances]
         return batch
 

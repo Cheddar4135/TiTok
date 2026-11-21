@@ -1,15 +1,15 @@
 # ============================================================
-# SALMONN2+ 평가용 하이퍼파라미터
+# Inference / evaluation settings for eval/eval.sh
 #
-# eval_salmonn2plus.sh 에서 source 하는 flat KEY: VALUE YAML.
+# Flat KEY: VALUE YAML read by eval/eval.sh.
 # STAGE / MODEL_ID / CKPT / BASE_MODEL_ID / DATASET_NAME / GPUS
-# 는 CLI 인자로 넘기고, 이 파일에는 추론/평가 설정만 둡니다.
+# are passed on the command line; this file only holds inference/eval settings.
 # ============================================================
 
 # ---- DeepSpeed ----
 DEEPSPEED_CONFIG: scripts/zero2.json
 
-# ---- 이미지/비디오 해상도 ----
+# ---- Image / video resolution ----
 MAX_PIXELS: 176400
 MIN_PIXELS: 784
 VIDEO_MAX_FRAME_PIXELS: 28224
@@ -18,13 +18,13 @@ VIDEO_MIN_FRAMES: 64
 VIDEO_MAX_FRAMES: 128
 BASE_INTERVAL: 0.2
 
-# ---- 런타임 ----
+# ---- Runtime ----
 MODEL_MAX_LENGTH: 10000
 DATALOADER_NUM_WORKERS: 2
 GRADIENT_CHECKPOINTING: True
 NO_AUDIO: False
 
-# ---- Trainer 가 요구하지만 평가에서는 사실상 무의미한 값 ----
+# ---- Required by the Trainer but unused during evaluation ----
 PER_DEVICE_TRAIN_BATCH_SIZE: 1
 GRADIENT_ACCUMULATION_STEPS: 1
 LEARNING_RATE: 1e-5
@@ -33,9 +33,9 @@ EVAL_STRATEGY: "no"
 SAVE_STRATEGY: "no"
 REPORT_TO: none
 
-# ---- mIoU 평가 파라미터 (eval_miou_multiseg.py 로 전달) ----
+# ---- mIoU evaluation (passed to eval_miou.py) ----
 MAX_TIME: 999.9
 
-# ---- TTI input-side time-marker format (학습 시와 동일하게 맞출 것) ----
+# ---- TTI input-side time-marker format (must match training) ----
 # off | special_token | natural_text
 TTI_TIME_FORMAT: special_token

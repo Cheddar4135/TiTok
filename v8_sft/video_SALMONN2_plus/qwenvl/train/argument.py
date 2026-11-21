@@ -59,12 +59,12 @@ class DataArguments:
     hop_length: int = field(default=160)
     sampling_rate: int = field(default=16000)
     # TTI (Time-Token Interleaving) input-side marker mode
-    #   "off"           : 마커 미삽입 (Qwen2.5-VL 베이스라인) — 기본값
+    #   "off"           : no markers (Qwen2.5-VL baseline), default
     #   "special_token" : <t0><t0><t1><tdot><t5> (5 special tokens / chunk, XXX.Y)
     #   "natural_text"  : "second{XXXX.Y}" (9 text tokens / chunk)
-    #   "from_to"       : "From <t*>×5 to <t*>×5" (14 tokens; 출력 GT 와 동일 포맷)
-    # 출력(GT/labels) 형식은 모드와 무관 (항상 special_token). 이 옵션은 video/audio
-    # 청크 사이에 끼우는 입력 측 마커 표현만 바꾼다.
+    #   "from_to"       : "From <t*>x5 to <t*>x5" (14 tokens; same format as the output)
+    # The output (GT/labels) format is always special_token. This option only changes
+    # the input-side markers inserted between video/audio chunks.
     tti_time_format: str = field(default="off")
 
 

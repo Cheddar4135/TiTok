@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-demo_app.py — video-SALMONN2+ temporal grounding 데모 (VideoMind 스타일, Gradio)
+demo_app.py - Gradio demo for TiTok multi-segment audio-visual temporal grounding.
 
-비디오 업로드 + 질문 → 답변 텍스트 + 타임라인에 예측 세그먼트 표시.
-gdpo_trainer_batch.py 의 검증된 추론 경로(load_model_and_tokenizer +
-LazySupervisedDataset + generate)를 그대로 재사용한다(= 학습 때와 동일 전처리).
+Upload a video (or give a YouTube URL) and a question; the answer is shown as text and
+the predicted segments on a timeline. Inference reuses the GDPO trainer's model loader
+(load_model_and_tokenizer) and LazySupervisedDataset, i.e. the same preprocessing as training.
 
 Usage (GPU machine, from the repo root):
   pip install gradio
@@ -19,8 +19,8 @@ env:
   DEMO_SERVER_NAME default 127.0.0.1
   DEMO_SERVER_PORT default 7860
 
-⚠️ 이 파일은 GPU/체크포인트가 없는 환경에서 작성됨 → 첫 실행 시 generate 시그니처/
-   전처리 한두 군데를 네 환경에서 검증해야 할 수 있음(아래 [VERIFY] 주석 지점).
+Note: written without GPU access; the generate call and preprocessing are marked [VERIFY]
+      below in case they need adjusting for your environment.
 """
 
 import os
@@ -34,7 +34,7 @@ from dataclasses import dataclass
 
 import torch
 
-# ── 경로 셋업 (gdpo_trainer_clip 와 동일 패턴) ──
+# -- path setup --
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(_THIS_DIR, ".."))
 if PROJECT_ROOT not in sys.path:
@@ -52,10 +52,10 @@ from transformers import WhisperFeatureExtractor
 
 import gradio as gr
 
-# ── gradio_client api_info 버그 우회 ─────────────────────────────────────────
-# 일부 gradio 버전에서 bool schema(additionalProperties: true)를 api_info 생성 시
-# 처리 못 해 "argument of type 'bool' is not iterable" 로 페이지 로드가 깨짐.
-# get_type / _json_schema_to_python_type 가 dict 가 아닌 schema 를 만나면 'Any' 처리.
+# -- workaround for a gradio_client api_info bug --
+# Some gradio versions cannot handle boolean schemas (additionalProperties: true) when
+# building api_info and fail with "argument of type 'bool' is not iterable".
+# Treat any non-dict schema as 'Any' in get_type / _json_schema_to_python_type.
 try:
     import gradio_client.utils as _gcu
 
@@ -81,7 +81,7 @@ import matplotlib.pyplot as plt
 
 
 # ============================================================
-# 설정 (env)
+# Settings (env)
 # ============================================================
 MODEL_PATH = os.environ.get("DEMO_MODEL_PATH")
 MODEL_BASE = os.environ.get("DEMO_MODEL_BASE")
@@ -92,11 +92,11 @@ SERVER_PORT = int(os.environ.get("DEMO_SERVER_PORT", "7860"))
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
 if not MODEL_PATH or not MODEL_BASE:
-    raise SystemExit("[DEMO] DEMO_MODEL_PATH / DEMO_MODEL_BASE 환경변수 필요")
+    raise SystemExit("[DEMO] DEMO_MODEL_PATH and DEMO_MODEL_BASE must be set")
 
 
 # ============================================================
-# 시간 토큰 디코딩 (eval/eval_miou_multiseg.py 와 동일)
+# Time-token decoding (same as eval/eval_miou.py)
 # ============================================================
 def decode_vtg_time(token_str, max_time=9999.9):
     has_dot = "<tdot>" in token_str
@@ -116,7 +116,7 @@ def decode_vtg_time(token_str, max_time=9999.9):
 
 
 def parse_multi_segments(raw, max_time=9999.9):
-    """'From X to Y. From X to Y.' → [[start, end], ...] (초)."""
+    """'From X to Y. From X to Y.' -> [[start, end], ...] (seconds)."""
     segments = []
     pattern = r"[Ff]rom\s+((?:<t\d>)+(?:<tdot>(?:<t\d>)+)?)\s+to\s+((?:<t\d>)+(?:<tdot>(?:<t\d>)+)?)"
     for m in re.finditer(pattern, raw):
@@ -130,7 +130,7 @@ def parse_multi_segments(raw, max_time=9999.9):
 
 
 def clean_text(raw):
-    """special 토큰 정리 (시간 토큰은 사람이 읽기 쉽게 초로 치환된 raw 는 따로 표시)."""
+    """Strip special tokens for display."""
     txt = raw
     for tok in ("<|im_end|>", "<|endoftext|>", "<|im_start|>"):
         txt = txt.replace(tok, "")
@@ -138,8 +138,8 @@ def clean_text(raw):
 
 
 # ============================================================
-# 학습/eval 과 동일한 Answer format 지시문 (unav100_v2.json 의 human 프롬프트와 일치)
-#   ★ 이 블록이 없으면 모델이 <t..> 시간토큰 형식을 안 내서 파싱이 안 됨.
+# Answer-format instruction used in training/eval (same as the human prompts in data/)
+#   Without it the model does not answer in the <t..> time-token format.
 # ============================================================
 ANSWER_FORMAT_BLOCK = (
     '\n\nAnswer format:\n'
@@ -151,10 +151,10 @@ ANSWER_FORMAT_BLOCK = (
 
 
 def build_human_prompt(question):
-    """사용자 질문에 학습과 동일한 Answer format 블록을 붙여 human 프롬프트 생성.
+    """Append the training Answer-format block to the user question.
 
-    이미 'Answer format' 이 들어있으면(=사용자가 직접 전체 프롬프트를 넣음) 그대로 둔다.
-    media placeholder 는 <image> 로 두면 dataset 이 video 키를 보고 <video> 로 자동 치환.
+    If the question already contains 'Answer format' (a full prompt), it is kept as is.
+    The <image> placeholder is replaced with <video> by the dataset when a video is given.
     """
     q = (question or "").strip()
     if "answer format" not in q.lower():
@@ -163,10 +163,10 @@ def build_human_prompt(question):
 
 
 def _resolve_ffmpeg():
-    """ffmpeg 바이너리 경로 해석. 시스템 PATH → imageio-ffmpeg 번들 순.
+    """Locate ffmpeg: system PATH first, then the imageio-ffmpeg bundled binary.
 
-    시스템 ffmpeg 가 없어도 `pip install imageio-ffmpeg` 만 돼 있으면
-    번들된 static 바이너리를 쓴다 (root 권한 불필요).
+    Without a system ffmpeg, `pip install imageio-ffmpeg` provides a static binary
+    (no root needed).
     """
     exe = shutil.which("ffmpeg")
     if exe:
@@ -179,19 +179,19 @@ def _resolve_ffmpeg():
 
 
 def download_youtube_video(url):
-    """YouTube(또는 yt-dlp 지원 사이트) URL → 임시 mp4 파일로 다운로드 (데모 한정).
+    """Download a YouTube (or other yt-dlp supported) URL to a temporary mp4.
 
-    업로드 파일과 동일 경로로 흘러가도록 로컬 mp4 경로만 돌려준다.
-    실패하면 None (→ 호출부에서 에러 메시지). 반환 파일은 호출부에서 삭제해야 함.
+    Returns a local mp4 path so it follows the same path as an upload.
+    Returns None on failure. The caller must delete the returned file.
     """
     try:
         import yt_dlp
     except ImportError:
-        print("[DEMO] yt-dlp 미설치 → URL 다운로드 불가 (`pip install yt-dlp`)")
+        print("[DEMO] yt-dlp is not installed; cannot download URLs (`pip install yt-dlp`)")
         return None
 
     out_tmpl = tempfile.NamedTemporaryFile(suffix=".%(ext)s", delete=False).name
-    # 720p 이하 mp4 우선(빠르고 가벼움). ffmpeg 있으면 best video+audio 머지도 가능.
+    # Prefer mp4 up to 720p (fast, small). With ffmpeg, best video+audio can also be merged.
     ydl_opts = {
         "format": "best[height<=720][ext=mp4]/best[ext=mp4]/best",
         "outtmpl": out_tmpl,
@@ -207,26 +207,26 @@ def download_youtube_video(url):
             info = ydl.extract_info(url, download=True)
             path = ydl.prepare_filename(info)
     except Exception as e:
-        print(f"[DEMO] YouTube 다운로드 실패: {repr(e)[:200]}")
+        print(f"[DEMO] YouTube download failed: {repr(e)[:200]}")
         return None
     if not os.path.exists(path) or os.path.getsize(path) < 1024:
-        print("[DEMO] 다운로드 파일이 비어있음")
+        print("[DEMO] downloaded file is empty")
         return None
-    print(f"[DEMO] YouTube 다운로드 완료: {path}")
+    print(f"[DEMO] YouTube download finished: {path}")
     return path
 
 
 def extract_audio_from_video(video_path):
-    """오디오 미업로드 시 비디오에서 오디오 트랙을 16kHz mono wav 로 추출 (데모 한정).
+    """Extract the audio track of a video as 16 kHz mono wav when no audio is uploaded.
 
-    업로드 오디오와 동일 경로로 흘러가도록 임시 wav 경로만 돌려준다.
-    ffmpeg 없거나 무음/오디오트랙 없으면 None (→ 비디오만으로 추론).
-    반환된 임시 파일은 호출부에서 삭제해야 함.
+    Returns a temporary wav path so it follows the same path as an uploaded audio file.
+    Returns None without ffmpeg or when there is no audio track (video-only inference).
+    The caller must delete the returned file.
     """
     ffmpeg = _resolve_ffmpeg()
     if ffmpeg is None:
-        print("[DEMO] ffmpeg 없음 → 비디오 오디오 추출 skip (비디오만 사용). "
-              "오디오를 쓰려면 `pip install imageio-ffmpeg` 또는 "
+        print("[DEMO] ffmpeg not found; skipping audio extraction (video only). "
+              "For audio, `pip install imageio-ffmpeg` or "
               "`conda install -c conda-forge ffmpeg`")
         return None
     out = tempfile.NamedTemporaryFile(suffix=".wav", delete=False).name
@@ -238,27 +238,27 @@ def extract_audio_from_video(video_path):
         )
     except subprocess.CalledProcessError as e:
         tail = e.stderr.decode(errors="ignore")[-200:] if e.stderr else ""
-        print(f"[DEMO] 비디오 오디오 추출 실패(무음/트랙없음?) → 비디오만 사용: {tail}")
+        print(f"[DEMO] audio extraction failed (silent / no track?); using video only: {tail}")
         try:
             os.remove(out)
         except OSError:
             pass
         return None
-    # 빈 파일(무음 트랙) 방어
+    # guard against empty files (silent track)
     if not os.path.exists(out) or os.path.getsize(out) < 1024:
-        print("[DEMO] 추출된 오디오가 비어있음 → 비디오만 사용")
+        print("[DEMO] extracted audio is empty; using video only")
         try:
             os.remove(out)
         except OSError:
             pass
         return None
-    print(f"[DEMO] 비디오에서 오디오 추출: {out}")
+    print(f"[DEMO] extracted audio from video: {out}")
     return out
 
 
 # ============================================================
-# 데이터 전처리 args (gdpo_trainer_clip.py main() 의 GDPODataArgs 복제)
-#   ※ 학습 때와 동일한 전처리를 쓰기 위해 값도 동일하게 유지.
+# Data preprocessing args (copy of GDPODataArgs in gdpo_trainer_batch.py main())
+#   Values are kept identical so that preprocessing matches training.
 # ============================================================
 @dataclass
 class DemoDataArgs:
@@ -287,12 +287,12 @@ class DemoDataArgs:
 
 
 # ============================================================
-# 모델 로드 (1회)
+# Load the model (once)
 # ============================================================
 print(f"[DEMO] loading model (tti_mode={TTI_MODE}, device={DEVICE})")
 model, tokenizer = load_model_and_tokenizer(MODEL_PATH, MODEL_BASE, tti_mode=TTI_MODE)
 model = model.to(DEVICE).eval()
-# PEFT wrapper 면 한 겹 벗긴 base 로 generate (gdpo 와 동일 — LoRA 는 inline 적용)
+# Generate with the base under the PEFT wrapper (as in GDPO; LoRA is applied inline)
 GEN_MODEL = model.get_base_model() if hasattr(model, "get_base_model") else model
 
 data_args = DemoDataArgs()
@@ -310,24 +310,24 @@ print("[DEMO] model ready")
 
 
 # ============================================================
-# 추론
+# Inference
 # ============================================================
 @torch.no_grad()
 def infer(video_path, audio_path, question, max_new_tokens, do_sample, temperature,
           youtube_url=None):
-    # 업로드 영상이 없고 URL 이 있으면 YouTube 등에서 다운로드 (업로드와 동일 경로로 처리)
+    # Without an uploaded video, download the URL (then handled like an upload)
     downloaded_video = None
     if not video_path and youtube_url and youtube_url.strip():
         downloaded_video = download_youtube_video(youtube_url.strip())
         video_path = downloaded_video
     if not video_path:
-        return "[비디오를 업로드하거나 YouTube URL 을 입력하세요]", "", []
+        return "[Upload a video or enter a YouTube URL]", "", []
     if not question or not question.strip():
         question = ("At what point in the video does the described event occur "
                     "in terms of both video and audio?")
 
-    # 1) 단일 샘플 JSON 구성 (LazySupervisedDataset 스키마)
-    #    학습/eval 과 동일하게 Answer format 블록을 자동 부착 (build_human_prompt).
+    # 1) Build a single-sample JSON (LazySupervisedDataset schema)
+    #    with the same Answer-format block as training/eval (build_human_prompt).
     sample = {
         "video": video_path,
         "conversations": [
@@ -335,7 +335,7 @@ def infer(video_path, audio_path, question, max_new_tokens, do_sample, temperatu
             {"from": "gpt", "value": ""},
         ],
     }
-    # 오디오 미업로드 시 비디오에서 자동 추출 (업로드 오디오와 동일 경로로 처리)
+    # Without uploaded audio, extract it from the video (then handled like an upload)
     extracted_audio = None
     if not audio_path and video_path:
         extracted_audio = extract_audio_from_video(video_path)
@@ -364,7 +364,7 @@ def infer(video_path, audio_path, question, max_new_tokens, do_sample, temperatu
     input_ids = batch["input_ids"].to(device)
     attention_mask = batch["attention_mask"].to(device)
 
-    # 2) 프롬프트만 추출 (gdpo compute_loss 와 동일: 빈 gpt 답변 → assistant 프롬프트까지로 컷)
+    # 2) Keep only the prompt (as in GDPO compute_loss: empty gpt answer -> cut after the assistant prompt)
     labels = batch.get("labels", None)
     if labels is not None:
         labels = labels.to(device)
@@ -374,7 +374,7 @@ def infer(video_path, audio_path, question, max_new_tokens, do_sample, temperatu
             input_ids = input_ids[:, :cut]
             attention_mask = attention_mask[:, :cut]
 
-    # 3) 멀티모달 kwargs (gdpo gen_kwargs 와 동일 키)
+    # 3) Multimodal kwargs (same keys as the GDPO gen_kwargs)
     gen_kwargs = dict(
         input_ids=input_ids,
         attention_mask=attention_mask,
@@ -402,11 +402,11 @@ def infer(video_path, audio_path, question, max_new_tokens, do_sample, temperatu
     if spg is not None:
         gen_kwargs["second_per_grid_ts"] = spg.to(device) if torch.is_tensor(spg) else spg
 
-    # [VERIFY] VS2+ generate 시그니처 — gdpo 는 raw_model.generate(**gen_kwargs) 로 동작 확인됨.
+    # [VERIFY] video-SALMONN 2+ generate signature; GDPO uses raw_model.generate(**gen_kwargs).
     out = GEN_MODEL.generate(**gen_kwargs)
     gen_ids = out[0, input_ids.size(1):]
     raw = tokenizer.decode(gen_ids, skip_special_tokens=False)
-    return raw, None, None  # 후처리는 호출부에서
+    return raw, None, None  # post-processing is done by the caller
 
 
 def render_timeline(segments, max_time):
@@ -427,14 +427,13 @@ def render_timeline(segments, max_time):
 
 def run(video_path, youtube_url, audio_path, question, max_time, max_new_tokens,
         do_sample, temperature):
-    # 모델은 항상 실제로 실행 (콘솔 로그/지연 그대로 — 데모 진정성 유지)
     raw, _, _ = infer(video_path, audio_path, question, max_new_tokens, do_sample, temperature,
                       youtube_url=youtube_url)
 
     segments = parse_multi_segments(raw, max_time=float(max_time))
     answer = clean_text(raw)
 
-    seg_str = "\n".join(f"  • {s:.1f}s – {e:.1f}s" for s, e in segments) or "  (유효 세그먼트 없음)"
+    seg_str = "\n".join(f"  • {s:.1f}s – {e:.1f}s" for s, e in segments) or "  (no valid segments)"
     fig = render_timeline(segments, float(max_time))
     return answer, seg_str, fig
 
@@ -450,29 +449,29 @@ _DEMO_CSS = """
 """
 
 with gr.Blocks(title="TiTok — AV-VTG with GDPO", css=_DEMO_CSS) as demo:
-    gr.Markdown("## TiTok: Time-Token Based Audio-Visual Video Temporal Grounding with GDPO\n"
-                "비디오 업로드(또는 YouTube URL) + 질문 → 답변 + 타임라인에 예측 시간 구간 표시")
+    gr.Markdown("## TiTok: Audio-Visual LLM for Multi-Segment Temporal Grounding\n"
+                "Upload a video (or a YouTube URL) and ask a question; predicted time segments are shown on a timeline.")
     with gr.Row():
         with gr.Column(scale=1):
-            video = gr.Video(label="Video (업로드)", sources=["upload"],
+            video = gr.Video(label="Video (upload)", sources=["upload"],
                              height=220, elem_id="vid_in")
             youtube_url = gr.Textbox(
-                label="또는 YouTube URL (업로드 없을 때 사용)",
+                label="or YouTube URL (used when no video is uploaded)",
                 placeholder="https://www.youtube.com/watch?v=...")
-            audio = gr.Audio(label="Audio (선택, 미지정 시 비디오에서 오디오 자동 추출)",
+            audio = gr.Audio(label="Audio (optional; extracted from the video if empty)",
                              sources=["upload"], type="filepath", elem_id="aud_in")
             question = gr.Textbox(
-                label="Question (학습 문구 권장: 'At what point in the video does "
+                label="Question (training phrasing recommended: 'At what point in the video does "
                       "<EVENT> occur in terms of both video and audio?')",
                 lines=2,
                 placeholder="At what point in the video does a dog barking occur "
                             "in terms of both video and audio?\n"
-                            "(Answer format 지시문은 자동으로 붙습니다)")
-            max_time = gr.Slider(5, 600, value=60, step=1, label="Video duration (타임라인 축, 초)")
-            with gr.Accordion("Generation 설정", open=False):
+                            "(the Answer-format instruction is added automatically)")
+            max_time = gr.Slider(5, 600, value=60, step=1, label="Video duration (timeline axis, s)")
+            with gr.Accordion("Generation settings", open=False):
                 max_new = gr.Slider(64, 1024, value=512, step=64, label="max_new_tokens")
                 do_sample = gr.Checkbox(value=False, label="sampling (off=greedy)")
-                temperature = gr.Slider(0.1, 1.5, value=1.0, step=0.1, label="temperature (sampling 시)")
+                temperature = gr.Slider(0.1, 1.5, value=1.0, step=0.1, label="temperature (when sampling)")
             btn = gr.Button("Run", variant="primary")
         with gr.Column(scale=1):
             answer = gr.Textbox(label="Answer", lines=4)

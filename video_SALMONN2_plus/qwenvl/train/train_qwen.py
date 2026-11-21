@@ -226,12 +226,12 @@ def train(attn_implementation="flash_attention_2"):
             torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
         )
         model.config.use_cache = False
-        # TTI input-side marker 모드를 모델 config에 기록 → 추론/eval 시 rope2d가 자동으로
-        # 같은 길이 가정으로 동작.
+        # Store the TTI input-side marker mode in the model config so that rope2d
+        # assumes the same marker length at inference/eval time.
         model.config.tti_time_format = data_args.tti_time_format
-        # 마커 길이는 dataset.py 의 _TIME_MARKER_TOKEN_LEN 단일 진실원에서 가져온다.
-        # (여기에 값을 복제하면 dataset.py 와 어긋나 rope 위치가 밀린다 — 과거 9/8 불일치 사고)
-        # off 는 0 → rope 가 '마커 없음' 으로 보도록 None 으로 변환.
+        # The marker length comes from _TIME_MARKER_TOKEN_LEN in dataset.py (single source of truth;
+        # a duplicated value here would drift from dataset.py and shift RoPE positions).
+        # off maps to 0 -> None so that rope treats it as 'no markers'.
         model.config.time_marker_token_len = (
             _TIME_MARKER_TOKEN_LEN[data_args.tti_time_format] or None
         )
@@ -388,12 +388,12 @@ def train(attn_implementation="flash_attention_2"):
         if training_args.no_audio:
             del model.audio
 
-        # TTI marker 모드를 추론 시에도 명시 — 학습 시 저장된 config 값이 비어있는
-        # 옛 체크포인트로 평가할 때 backward-compat를 보장.
+        # Also set the TTI marker mode explicitly at inference, for older checkpoints
+        # whose saved config does not contain it.
         model.config.tti_time_format = data_args.tti_time_format
-        # 마커 길이는 dataset.py 의 _TIME_MARKER_TOKEN_LEN 단일 진실원에서 가져온다.
-        # (여기에 값을 복제하면 dataset.py 와 어긋나 rope 위치가 밀린다 — 과거 9/8 불일치 사고)
-        # off 는 0 → rope 가 '마커 없음' 으로 보도록 None 으로 변환.
+        # The marker length comes from _TIME_MARKER_TOKEN_LEN in dataset.py (single source of truth;
+        # a duplicated value here would drift from dataset.py and shift RoPE positions).
+        # off maps to 0 -> None so that rope treats it as 'no markers'.
         model.config.time_marker_token_len = (
             _TIME_MARKER_TOKEN_LEN[data_args.tti_time_format] or None
         )
@@ -407,11 +407,11 @@ def train(attn_implementation="flash_attention_2"):
             model.cuda()
 
         result = []
-        tt_debug = []  # [TT_DEBUG] 생성 원본 토큰 ID 분석 누적
+        tt_debug = []  # [TT_DEBUG] accumulated analysis of generated token ids
 
         def _tt_classify(gen_ids):
-            """생성된 원본 토큰 ID 가 real 타임토큰(151666~151676)인지 BPE subword 인지 판정.
-            real 이면 decode(skip_special_tokens=True)에서 사라지고, subword 면 그대로 남는다."""
+            """Check whether generated ids are real time tokens (151666~151676) or BPE subwords.
+            Real time tokens vanish under decode(skip_special_tokens=True); subwords remain."""
             import re as _re
             TIME_LO, TIME_HI = 151666, 151676   # <t0>..<t9>,<tdot> (added_tokens.json)
             ids = [int(x) for x in gen_ids]
@@ -421,7 +421,7 @@ def train(attn_implementation="flash_attention_2"):
             dec_strip = tokenizer.decode(ids, skip_special_tokens=True)
             n_markers = len(_re.findall(r"<t\d>|<tdot>", dec_keep))
             if n_real == 0 and n_markers > 0:
-                verdict = "BPE_SUBWORD"          # 텍스트엔 <t..> 있는데 real id 0개 → 글자조각
+                verdict = "BPE_SUBWORD"          # <t..> in the text but no real time-token id: subword pieces
             elif n_real > 0 and n_real >= n_markers:
                 verdict = "REAL_TIME_TOKEN"
             elif n_real > 0:
@@ -462,17 +462,17 @@ def train(attn_implementation="flash_attention_2"):
                     "use_audio": inputs.pop("use_audio", False),
                     "should_use": inputs.pop("should_use", True),
                 }
-                # audio_lengths 는 파이썬 list 라 아래 텐서 필터에 걸려 사라진다. 그런데
-                # rope2d.get_rope_index_25 는 (audio_lengths is not None) 여야 TTI 마커를
-                # 인지하는 분기로 들어가므로, 빠지면 마커가 input_ids 에 있어도 위치 계산이
-                # 마커를 무시해 시간 grounding 이 끊긴다(= 학습 val 대비 mIoU 반토막).
-                # 학습측 _val_greedy_generate 는 이 값을 명시적으로 넘긴다 — 동일하게 맞춘다.
+                # audio_lengths is a Python list and would be dropped by the tensor filter below.
+                # rope2d.get_rope_index_25 only takes the TTI-aware branch when audio_lengths is
+                # not None; without it the markers are ignored in the position computation and
+                # temporal grounding breaks (about half the validation mIoU).
+                # The training-side _val_greedy_generate passes it explicitly; do the same here.
                 _audio_lengths = inputs.get("audio_lengths", None)
                 inputs = {k: v.to(f"cuda:{torch.cuda.current_device()}") for k, v in inputs.items() if isinstance(v, torch.Tensor)}
                 if _audio_lengths is not None:
                     inputs["audio_lengths"] = _audio_lengths
-                # debug_interleave_dir 가 설정되고 debug_interleave_generate 가 False 면
-                # dataset hook 이 이미 덤프했으니 model.generate 를 스킵한다.
+                # If debug_interleave_dir is set and debug_interleave_generate is False,
+                # the dataset hook has already dumped the sample, so skip model.generate.
                 _dbg_skip = (
                     bool(getattr(data_args, "debug_interleave_dir", ""))
                     and not getattr(data_args, "debug_interleave_generate", False)
@@ -482,11 +482,11 @@ def train(attn_implementation="flash_attention_2"):
                         output_text = "[debug_interleave: generate skipped]"
                     else:
                         with torch.no_grad():
-                            # repetition_penalty 를 명시하지 않으면 generation_config.json 의
-                            # 1.05 가 greedy 에서도 적용된다. 타임토큰 출력은 같은 숫자 토큰을
-                            # 반복 사용하므로 페널티가 값 자체를 왜곡하고, 종료(.+EOS)도 억제해
-                            # 세그먼트를 과분할한다(학습 pred/샘플 1.36 → 평가 2.10).
-                            # 학습측(rollout·val)은 둘 다 1.0 을 명시한다 — 동일하게 맞춘다.
+                            # Without an explicit repetition_penalty, the 1.05 from generation_config.json
+                            # also applies to greedy decoding. Time-token outputs reuse the same digit
+                            # tokens, so the penalty distorts the values and suppresses the end (. + EOS),
+                            # over-splitting segments (1.36 -> 2.10 predicted segments per sample).
+                            # Training (rollout and val) uses 1.0; match it here.
                             outputs = model.generate(
                                 **inputs,
                                 max_new_tokens=1024,
@@ -525,8 +525,8 @@ def train(attn_implementation="flash_attention_2"):
                 json.dump(tt_debug, f, indent=2, ensure_ascii=False)
             from collections import Counter as _Counter
             _summary = dict(_Counter(d["verdict"] for d in tt_debug))
-            print(f"[TT-DBG] ===== SUMMARY (n={len(tt_debug)}) verdict 분포: {_summary} =====", flush=True)
-            print(f"[TT-DBG] 상세 저장: {_dbg_path}", flush=True)
+            print(f"[TT-DBG] ===== SUMMARY (n={len(tt_debug)}) verdicts: {_summary} =====", flush=True)
+            print(f"[TT-DBG] details saved to: {_dbg_path}", flush=True)
 
         return
 

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""eval_salmonn2plus.sh chunked 추론 보조.
+"""Helpers for chunked inference in eval/eval.sh.
 
-서브커맨드:
+Subcommands:
   split            : test_json → chunks_dir/chunk_NNNN.json (idempotent)
   build_full       : chunks_dir/chunk_*.json → chunks_dir/_full.json (concat)
-  append           : chunk 결과 → master 에 atomic append
-  resume_offset    : .chunk_idx + master + chunks_dir 보고 다음 시작 chunk 결정
-  truncate_master  : master 를 keep 개까지만 남기고 자름 (chunk 경계 정렬용)
-  summary_oneline  : eval_miou_summary.json → 한 줄 metric 표시
+  append           : atomically append chunk results to the master file
+  resume_offset    : choose the next chunk from .chunk_idx, master and chunks_dir
+  truncate_master  : keep only the first N entries of master (align to chunk boundaries)
+  summary_oneline  : print one line of metrics from a summary JSON
 """
 import argparse
 import glob
@@ -67,12 +67,12 @@ def cmd_append(args):
 
 
 def cmd_resume_offset(args):
-    """다음 시작 chunk index + master 길이 + chunk-aligned expected_n 출력.
+    """Print the next chunk index, master length and chunk-aligned expected_n.
 
-    우선순위:
-      1) .chunk_idx 파일이 있으면 그 값
-      2) master 길이 + chunks_dir 의 실제 chunk 사이즈 누적으로 추정
-      3) 둘 다 없으면 0
+    Priority:
+      1) the value in .chunk_idx if the file exists
+      2) estimate from the master length and the cumulative chunk sizes in chunks_dir
+      3) otherwise 0
     """
     n_master = len(_load_json(args.master, []))
 
