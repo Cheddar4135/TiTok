@@ -115,18 +115,6 @@ def decode_vtg_time(token_str, max_time=9999.9):
     return min(t, max_time)
 
 
-def encode_vtg_time(t):
-    """초(float) → time-token 문자열 (decode_vtg_time 의 역함수).
-
-    학습 GT 형식과 동일: 정수부 최소 3자리 zero-pad + <tdot> + 소수 1자리.
-    예: 6.1 → '<t0><t0><t6><tdot><t1>',  142.7 → '<t1><t4><t2><tdot><t7>'.
-    """
-    tenths = int(round(max(0.0, float(t)) * 10))
-    int_part, dec = divmod(tenths, 10)
-    int_str = f"{int_part:03d}"
-    return "".join(f"<t{d}>" for d in int_str) + "<tdot>" + f"<t{dec}>"
-
-
 def parse_multi_segments(raw, max_time=9999.9):
     """'From X to Y. From X to Y.' → [[start, end], ...] (초)."""
     segments = []
@@ -147,31 +135,6 @@ def clean_text(raw):
     for tok in ("<|im_end|>", "<|endoftext|>", "<|im_start|>"):
         txt = txt.replace(tok, "")
     return txt.strip()
-
-
-# ============================================================
-# 데모용 출력 override (모델은 실제로 돌리되 화면 표시만 임의 지정)
-#   - 입력 예: "6.1-14.7, 20-25.3"  또는  "From 6.1 to 14.7. From 20 to 25.3"
-#   - 비우면(None) 모델 실제 출력을 그대로 사용.
-# ============================================================
-def parse_override_segments(text):
-    """'6.1-14.7', '6.1 to 14.7', '20~25.3' 등에서 [[start, end], ...] (초) 추출."""
-    if not text or not text.strip():
-        return None
-    segs = []
-    for s, e in re.findall(r"(\d+\.?\d*)\s*(?:-|to|~|–|—)\s*(\d+\.?\d*)", text.lower()):
-        s, e = float(s), float(e)
-        if e < s:
-            s, e = e, s
-        segs.append([s, e])
-    return segs or None
-
-
-def segments_to_answer(segments):
-    """override 세그먼트 → 실제 모델 출력과 동일한 time-token 형식 문자열.
-    예: 'From <t0><t0><t6><tdot><t1> to <t0><t1><t4><tdot><t7>.'
-    """
-    return " ".join(f"From {encode_vtg_time(s)} to {encode_vtg_time(e)}." for s, e in segments)
 
 
 # ============================================================
@@ -463,20 +426,13 @@ def render_timeline(segments, max_time):
 
 
 def run(video_path, youtube_url, audio_path, question, max_time, max_new_tokens,
-        do_sample, temperature, override=""):
+        do_sample, temperature):
     # 모델은 항상 실제로 실행 (콘솔 로그/지연 그대로 — 데모 진정성 유지)
     raw, _, _ = infer(video_path, audio_path, question, max_new_tokens, do_sample, temperature,
                       youtube_url=youtube_url)
 
-    # 데모용 override 가 있으면 화면 표시만 그 값으로 대체
-    ov = parse_override_segments(override)
-    if ov is not None:
-        print(f"[DEMO] override 적용 — 모델 raw: {raw[:120]!r} → 표시 세그먼트: {ov}")
-        segments = ov
-        answer = segments_to_answer(ov)
-    else:
-        segments = parse_multi_segments(raw, max_time=float(max_time))
-        answer = clean_text(raw)
+    segments = parse_multi_segments(raw, max_time=float(max_time))
+    answer = clean_text(raw)
 
     seg_str = "\n".join(f"  • {s:.1f}s – {e:.1f}s" for s, e in segments) or "  (유효 세그먼트 없음)"
     fig = render_timeline(segments, float(max_time))
@@ -517,9 +473,6 @@ with gr.Blocks(title="TiTok — AV-VTG with GDPO", css=_DEMO_CSS) as demo:
                 max_new = gr.Slider(64, 1024, value=512, step=64, label="max_new_tokens")
                 do_sample = gr.Checkbox(value=False, label="sampling (off=greedy)")
                 temperature = gr.Slider(0.1, 1.5, value=1.0, step=0.1, label="temperature (sampling 시)")
-                override = gr.Textbox(
-                    label="display segments (초 단위, 예: 6.1-14.7, 20-25.3)",
-                    placeholder="6.1-14.7, 20-25.3")
             btn = gr.Button("Run", variant="primary")
         with gr.Column(scale=1):
             answer = gr.Textbox(label="Answer", lines=4)
@@ -528,7 +481,7 @@ with gr.Blocks(title="TiTok — AV-VTG with GDPO", css=_DEMO_CSS) as demo:
 
     btn.click(run,
               inputs=[video, youtube_url, audio, question, max_time, max_new, do_sample,
-                      temperature, override],
+                      temperature],
               outputs=[answer, seg_box, timeline])
 
 
