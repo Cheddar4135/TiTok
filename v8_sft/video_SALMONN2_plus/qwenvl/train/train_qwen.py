@@ -364,31 +364,6 @@ def train(attn_implementation="flash_attention_2"):
                 print(f"[LORA] modules_to_save={module_to_save}")
                 print(f"[TIME_TOKEN] {len(time_token_ids)} tokens unfrozen via embed_tokens/lm_head: {time_token_ids}")
 
-        # ---- Ordinal regularization: time_token_ids 등록 (lambda_ord > 0 일 때만) ----
-        # 별도 head 학습 없음. lm_head 의 time-token row 만 활용해 distance-weighted NLL 계산.
-        ordinal_active = bool(getattr(data_args, "ordinal_enabled", False)) and (
-            float(getattr(training_args, "lambda_ord", 0.0)) > 0.0
-        )
-        if ordinal_active:
-            inner = model.base_model.model if hasattr(model, "base_model") else model
-            # <t0>..<t9> 의 vocab id 를 정렬해서 buffer 로 등록
-            digit_ids = []
-            for d in range(10):
-                tid = tokenizer.convert_tokens_to_ids(f"<t{d}>")
-                if tid is None or tid < 0:
-                    raise RuntimeError(f"time token <t{d}> not found in tokenizer")
-                digit_ids.append(tid)
-            inner.register_buffer(
-                "time_token_ids",
-                torch.tensor(digit_ids, dtype=torch.long),
-                persistent=False,
-            )
-            if dist.get_rank() == 0:
-                print(f"[ORDINAL] distance-weighted NLL regularization enabled. "
-                      f"time_token_ids ({len(digit_ids)})={digit_ids}, "
-                      f"lambda_ord={training_args.lambda_ord}, "
-                      f"unav_weight={training_args.ordinal_unav_weight}")
-
         if dist.get_rank() == 0:
             for k, v in model.named_parameters():
                 if v.requires_grad:
@@ -400,9 +375,6 @@ def train(attn_implementation="flash_attention_2"):
         )
         if model_args.use_lora and model_args.tune_mm_qformer:
             trainer.add_callback(SaveQTokensCallback())
-        # NOTE: distance-weighted NLL ordinal uses lm_head's own weights (no extra params),
-        # so no sidecar callback needed. lm_head time-token rows are saved via PEFT's
-        # modules_to_save mechanism in adapter_model.safetensors.
         if data_module.get("eval_dataset") is not None and getattr(training_args, "early_stopping_patience", 0) > 0:
             from transformers import EarlyStoppingCallback
             trainer.add_callback(EarlyStoppingCallback(

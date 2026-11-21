@@ -42,7 +42,6 @@ except ImportError:
 import transformers
 
 from .rope2d import get_rope_index_25, get_rope_index_2
-from .ordinal_mask import build_time_token_maps, make_ordinal_mask
 from decord import VideoReader, cpu
 
 IGNORE_INDEX = -100
@@ -391,21 +390,6 @@ class LazySupervisedDataset(Dataset):
         self.data_args.image_processor.size["longest_edge"] = data_args.max_pixels
         self.data_args.image_processor.size["shortest_edge"] = data_args.min_pixels
 
-        # Ordinal loss 활성화 시 time-token id 매핑 캐시
-        self.ordinal_enabled = bool(getattr(data_args, "ordinal_enabled", False))
-        if self.ordinal_enabled:
-            self.time_token_id_map, self.tdot_id = build_time_token_maps(tokenizer)
-            self.time_ndig_int = int(getattr(data_args, "time_ndig_int", 3))
-            self.time_ndig_dec = int(getattr(data_args, "time_ndig_dec", 2))
-            rank0_print(
-                f"[ORDINAL] enabled. tokenization={self.time_ndig_int}+{self.time_ndig_dec}, "
-                f"|time_token_ids|={len(self.time_token_id_map)}, tdot_id={self.tdot_id}"
-            )
-        else:
-            self.time_token_id_map = None
-            self.tdot_id = -1
-            self.time_ndig_int = 0
-            self.time_ndig_dec = 0
 
         # TTI (Time-Token Interleaving) params cache.
         self.tti_time_format = getattr(data_args, "tti_time_format", "off")
@@ -808,23 +792,6 @@ class LazySupervisedDataset(Dataset):
             data_dict["source_id"] = source_id
             data_dict["task_type"] = task_type
 
-            # Ordinal mask 생성 (학습 모드 & ordinal_enabled 일 때만)
-            if self.ordinal_enabled and not self.data_args.run_test:
-                ids_1d = data_dict["input_ids"][0]
-                lbl_1d = data_dict["labels"][0]
-                ord_mask, dig_tgt, dig_pl = make_ordinal_mask(
-                    ids_1d, lbl_1d,
-                    source_id=source_id,
-                    task_type=task_type,
-                    ndig_int=self.time_ndig_int,
-                    ndig_dec=self.time_ndig_dec,
-                    time_token_id_map=self.time_token_id_map,
-                    tdot_id=self.tdot_id,
-                )
-                data_dict["ordinal_mask"] = ord_mask.unsqueeze(0)
-                data_dict["digit_target"] = dig_tgt.unsqueeze(0)
-                data_dict["digit_place"] = dig_pl.unsqueeze(0)
-
             if self.data_args.run_test:
                 labels = data_dict.pop("labels", None)
                 len_input = sum(labels[0] == IGNORE_INDEX)
@@ -920,31 +887,6 @@ class DataCollatorForSupervisedDataset(object):
         else:
             reject_ids, reject_labels, reject_position_ids, reject_attention_mask = None, None, None, None
         train_type = [instance["train_type"] for instance in instances][0]
-        # Ordinal loss 관련 필드 (있을 때만 batch 화)
-        L = input_ids.shape[1]  # max length after process_ids
-        if all("ordinal_mask" in inst for inst in instances):
-            ord_masks = [inst["ordinal_mask"].squeeze(0) for inst in instances]
-            dig_tgts = [inst["digit_target"].squeeze(0) for inst in instances]
-            dig_pls = [inst["digit_place"].squeeze(0) for inst in instances]
-            ordinal_mask_b = torch.nn.utils.rnn.pad_sequence(
-                ord_masks, batch_first=True, padding_value=False
-            )[:, :L]
-            digit_target_b = torch.nn.utils.rnn.pad_sequence(
-                dig_tgts, batch_first=True, padding_value=IGNORE_INDEX
-            )[:, :L]
-            digit_place_b = torch.nn.utils.rnn.pad_sequence(
-                dig_pls, batch_first=True, padding_value=-1
-            )[:, :L]
-            # 길이가 input_ids 보다 짧을 수도 (right-truncated) — 맞춰 pad
-            if ordinal_mask_b.shape[1] < L:
-                pad = L - ordinal_mask_b.shape[1]
-                ordinal_mask_b = torch.nn.functional.pad(ordinal_mask_b, (0, pad), value=False)
-                digit_target_b = torch.nn.functional.pad(digit_target_b, (0, pad), value=IGNORE_INDEX)
-                digit_place_b = torch.nn.functional.pad(digit_place_b, (0, pad), value=-1)
-        else:
-            ordinal_mask_b = None
-            digit_target_b = None
-            digit_place_b = None
         source_id_list = [inst.get("source_id", "unknown") for inst in instances]
         task_type_list = [inst.get("task_type", "unknown") for inst in instances]
         batch = dict(
@@ -961,9 +903,6 @@ class DataCollatorForSupervisedDataset(object):
             chosen_attention_mask=chosen_attention_mask,
             reject_attention_mask=reject_attention_mask,
             train_type=train_type,
-            ordinal_mask=ordinal_mask_b,
-            digit_target=digit_target_b,
-            digit_place=digit_place_b,
             source_id=source_id_list,
             task_type=task_type_list,
         )

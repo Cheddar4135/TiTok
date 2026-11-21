@@ -58,10 +58,6 @@ class DataArguments:
     chunk_length: int = field(default=30)
     hop_length: int = field(default=160)
     sampling_rate: int = field(default=16000)
-    # Ordinal loss 관련 (time-token ordinal supervision)
-    ordinal_enabled: bool = field(default=False)
-    time_ndig_int: int = field(default=4)   # 정수부 자릿수 (e.g. 4 for 4+1, 3 for 3+2)
-    time_ndig_dec: int = field(default=1)   # 소수부 자릿수 (e.g. 1 for 4+1, 2 for 3+2)
     # TTI (Time-Token Interleaving) input-side marker mode
     #   "off"           : 마커 미삽입 (Qwen2.5-VL 베이스라인) — 기본값
     #   "special_token" : <t0><t0><t1><tdot><t5> (5 special tokens / chunk, XXX.Y)
@@ -102,8 +98,3 @@ class TrainingArguments(transformers.TrainingArguments):
     audio_proj_wd: Optional[float] = None
     audio_q_tokens_lr: Optional[float] = None
     audio_q_tokens_wd: Optional[float] = None
-    # Ordinal loss 관련
-    lambda_ord: float = field(default=0.0)            # 0 이면 ordinal loss 사용 안 함 (CE only)
-    ord_head_lr: Optional[float] = None
-    ord_head_wd: Optional[float] = None
-    ordinal_unav_weight: float = field(default=1.0)   # UnAV sample 의 ord_loss 가중치 (PU-VALOR=1.0 기준)
