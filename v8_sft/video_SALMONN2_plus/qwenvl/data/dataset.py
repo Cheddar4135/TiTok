@@ -104,6 +104,25 @@ def rank0_print(*args):
         print(*args)
 
 
+def resolve_media_path(path):
+    """Resolve a media path from a dataset JSON.
+
+    Absolute paths are returned unchanged. Relative paths (the format used by
+    the released TiTok annotations, e.g. ``unav_100/videos/<id>.mp4``) are
+    joined to the ``MEDIA_ROOT`` environment variable.
+    """
+    if not isinstance(path, str) or not path or os.path.isabs(path):
+        return path
+    media_root = os.environ.get("MEDIA_ROOT")
+    if not media_root:
+        raise ValueError(
+            f"Relative media path {path!r} found in the dataset JSON, but MEDIA_ROOT "
+            "is not set. Set MEDIA_ROOT in paths.env to the directory that contains "
+            "unav_100/ and charades_sta/."
+        )
+    return os.path.join(media_root, path)
+
+
 def read_jsonl(path):
     with open(path, "r") as f:
         return [json.loads(line) for line in f]
@@ -368,6 +387,11 @@ class LazySupervisedDataset(Dataset):
             list_data_dict += annotations
 
         for d in list_data_dict:
+            for key in ("video", "audio", "image"):
+                if isinstance(d.get(key), list):
+                    d[key] = [resolve_media_path(p) for p in d[key]]
+                elif key in d:
+                    d[key] = resolve_media_path(d[key])
             if "<image>" in d["conversations"][0]["value"] and not "image" in d and "video" in d:
                 d["conversations"][0]["value"] = d["conversations"][0]["value"].replace(
                     "<image>", "<video>"

@@ -454,8 +454,8 @@ def _load_json(path):
 
 def _default_test_dir():
     here = os.path.dirname(os.path.abspath(__file__))
-    # <WS>/master/Team4/eval -> <WS>/data/test
-    return os.path.normpath(os.path.join(here, "..", "..", "..", "data", "test"))
+    # <repo>/eval -> <repo>/data/test
+    return os.path.normpath(os.path.join(here, "..", "data", "test"))
 
 
 def resolve_gt_json_path(results_file, test_dir):

@@ -4,23 +4,20 @@
 demo_app.py — video-SALMONN2+ temporal grounding 데모 (VideoMind 스타일, Gradio)
 
 비디오 업로드 + 질문 → 답변 텍스트 + 타임라인에 예측 세그먼트 표시.
-gdpo_trainer_clip.py 의 검증된 추론 경로(load_model_and_tokenizer +
+gdpo_trainer_batch.py 의 검증된 추론 경로(load_model_and_tokenizer +
 LazySupervisedDataset + generate)를 그대로 재사용한다(= 학습 때와 동일 전처리).
 
-실행 (GPU 서버에서):
+Usage (GPU machine, from the repo root):
   pip install gradio
-  source paths.env   # SFT_CKPT / BASE_MODEL 등
-  DEMO_MODEL_PATH=${SFT_CKPT} DEMO_MODEL_BASE=${BASE_MODEL} DEMO_TTI_MODE=off \
-  CUDA_VISIBLE_DEVICES=0 python gdpo/demo_app.py
-  → 콘솔의 https://xxxx.gradio.live 링크(72h 임시 공개) 로 접속
+  bash gdpo/run_demo.sh            # TiTok GDPO checkpoint-2000 on top of the SFT model
 
 env:
-  DEMO_MODEL_PATH  [필수] SFT/RL 체크포인트 (gdpo --model_path 와 동일)
-  DEMO_MODEL_BASE  [필수] VS2+ base 모델 (gdpo --model_base 와 동일)
-  DEMO_TTI_MODE    off|on (기본 off). 데이터/모델 짝 — 학습 때 쓴 값과 맞출 것.
-  DEMO_SHARE       1|0 (기본 1). gradio 공개 링크 생성 여부.
-  DEMO_SERVER_NAME 기본 0.0.0.0
-  DEMO_SERVER_PORT 기본 7860
+  DEMO_MODEL_PATH  [required] LoRA adapter or merged model (same as gdpo --model_path)
+  DEMO_MODEL_BASE  [required] base model (same as gdpo --model_base)
+  DEMO_TTI_MODE    off|on (default on). Must match the mode used in training.
+  DEMO_SHARE       1|0 (default 0). 1 creates a temporary public gradio.live link.
+  DEMO_SERVER_NAME default 127.0.0.1
+  DEMO_SERVER_PORT default 7860
 
 ⚠️ 이 파일은 GPU/체크포인트가 없는 환경에서 작성됨 → 첫 실행 시 generate 시그니처/
    전처리 한두 군데를 네 환경에서 검증해야 할 수 있음(아래 [VERIFY] 주석 지점).
@@ -46,13 +43,8 @@ sys.path.insert(0, os.path.join(PROJECT_ROOT, "video_SALMONN2_plus"))
 if _THIS_DIR not in sys.path:
     sys.path.insert(0, _THIS_DIR)
 
-# 검증된 모델 로더 재사용 (gdpo 와 100% 동일한 모델 로딩 경로)
-#   runpod 브랜치는 gdpo_trainer_clip, lab 브랜치는 gdpo_trainer 에 동일 함수 존재
-#   (시그니처 동일: load_model_and_tokenizer(model_path, model_base, tti_mode)).
-try:
-    from gdpo_trainer_clip import load_model_and_tokenizer
-except ImportError:
-    from gdpo_trainer import load_model_and_tokenizer
+# Reuse the GDPO trainer's model loader so the demo loads models exactly as training does.
+from gdpo_trainer_batch import load_model_and_tokenizer
 
 from qwenvl.data.dataset import LazySupervisedDataset, DataCollatorForSupervisedDataset
 from qwenvl.data.image_processing_qwen2_vl_fast import Qwen2VLImageProcessorFast
@@ -93,9 +85,9 @@ import matplotlib.pyplot as plt
 # ============================================================
 MODEL_PATH = os.environ.get("DEMO_MODEL_PATH")
 MODEL_BASE = os.environ.get("DEMO_MODEL_BASE")
-TTI_MODE = os.environ.get("DEMO_TTI_MODE", "off")
-SHARE = os.environ.get("DEMO_SHARE", "1") not in ("0", "false", "False")
-SERVER_NAME = os.environ.get("DEMO_SERVER_NAME", "0.0.0.0")
+TTI_MODE = os.environ.get("DEMO_TTI_MODE", "on")
+SHARE = os.environ.get("DEMO_SHARE", "0") not in ("0", "false", "False")
+SERVER_NAME = os.environ.get("DEMO_SERVER_NAME", "127.0.0.1")
 SERVER_PORT = int(os.environ.get("DEMO_SERVER_PORT", "7860"))
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 

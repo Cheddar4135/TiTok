@@ -1,193 +1,53 @@
-# 06.27 batch
-# 진단가이드 문서 남겨놨습니다.
-
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-gdpo_trainer.py (VS2+ / Qwen2.5-VL 버전) — 팀 공용 통합 트레이너
+TiTok stage 2: GDPO trainer for video-SALMONN 2+ (Qwen2.5-VL backbone).
 
-  ★ 통합본 — 그동안 분리돼 있던 변형(clip / sep2 / clip2_sep / CoT)을 단일 트레이너로
-    흡수. 모든 기능은 config/CLI 플래그로 켜고 끄며, 기본값(config.yaml)은 기존 GDPO 와
-    수치적으로 동일하게 동작한다(아래 "기본값 = 기존 GDPO" 참고).
-    레거시 변형 파일(gdpo_trainer_clip.py / _sep2.py / _clip2_sep.py / _f1_cot.py)은
-    버전관리용으로 보존하되, 신규 학습은 이 파일을 쓴다.
+Optimizes the multi-segment temporal grounding policy with group reward-decoupled
+policy optimization (GDPO): each reward channel is normalized within its rollout
+group before the channels are combined into one advantage.
 
-    통합된 기능:
-      - [clip-higher] DAPO clipped surrogate (ε_high>ε_low). config.clip.*.
-        clipped surrogate loss = -min( r·A, clip(r, 1-ε_low, 1+ε_high)·A ).
-      - [μ rollout 재사용] num_iterations(μ)>1 이면 한 rollout 을 μ 번 정책 업데이트에
-        재사용 → r≠1 이라야 clip 이 binding. μ=1 이면 기존 GDPO 와 수치 동일.
-      - [grad_accum 호환] block-repeat sampler([p0..p_{N-1}]×μ)로 HF 가 N microbatch
-        마다 optimizer.step() → **μ iteration 사이에 policy 가 실제로 업데이트**되어
-        grad_accum>1 이어도 clip 의 r≠1 이 유지된다. effective batch = grad_accum(N) × num_gpu.
-        (단순 HF grad_accum 은 μ 재사용이 한 step 에 묶여 r≈1 → clip 무력. 그래서 순서를
-         block-repeat 로 바꾸는 게 핵심.)
-      - [rollout 캐시] prompt-시그니처 키 캐시(슬롯/카운터 X). microbatch 순서가
-        DDP/블록반복으로 흩어져도 잘못된 재사용/크래시 없음(불일치=miss→재생성).
-        μ 도달 엔트리는 즉시 evict → 캐시 크기 ~grad_accum. old_logps 는 fresh 시점 1회
-        스냅샷, reuse 는 그 R 그대로.
-      - [sep2] gdpo.multi_seg_weight(기본 1.0=off): GT>=2 prompt advantage ×w (single
-        prior 상쇄). clip-higher on/off 모두 호환(advantage 공통 경로).
-        _compute_gdpo_advantages 의 prompt별 num_generations 그룹 정규화는 grad_accum 무관.
-      - [동적 reward 채널] --reward_module 로 채널 수/이름 가변(REWARD_CHANNELS 선언 또는
-        함수명 규약). CoT(<think>/<answer>) reward 모듈도 동일 경로로 지원 — 트레이너는
-        raw completion 만 넘기고 채널 파싱은 reward 모듈이 담당. 별도 CoT 트레이너 불필요.
-      - [modules_to_save 분리] lora.train_embeddings / lora.train_lm_head 개별 토글.
-      - [진단 로깅] ratio / clip_frac / gen_entropy / advantage 통계(wandb).
-      - [loss 이중스케일 없음] HF(training_step)가 loss/=grad_accum 1회만 수행, 본 코드는
-        나누지 않음(per-prompt 평균 반환).
+Main features (all controlled by the YAML config or CLI flags):
+  - Reward channels are defined by --reward_module. The paper uses
+    reward_functions_rM_sep3 with five channels: format, count, global, local,
+    precision.
+  - Clip-higher clipped surrogate (DAPO): -min(r*A, clip(r, 1-eps_low, 1+eps_high)*A).
+    It only binds when clip.num_iterations (mu) > 1, i.e. when one rollout is
+    reused for mu policy updates.
+  - A block-repeat sampler keeps optimizer steps between the mu iterations, so
+    gradient accumulation can be used with clip-higher.
+    Effective batch = gradient_accumulation_steps x num_gpus.
+  - Rollouts are cached by prompt signature for reuse across the mu iterations.
+  - gdpo.multi_seg_weight scales the advantage of prompts with >= 2 GT segments
+    (1.0 = off; the paper uses 1.0).
+  - Optional validation on held-out sets (config.val) logged to val_metrics.jsonl.
 
-    기본값 = 기존 GDPO: config.yaml(num_iterations=1, multi_seg_weight=1.0,
-      train_lm_head=false)로 돌리면 통합 전 동작과 수치 동일. clip-higher / sep2 등은
-      config_clip*.yaml / config_*sep*.yaml / CLI override 로 켠다.
+Training paths (chosen automatically from --model_path):
+  (A) continue an SFT LoRA adapter: model_path = adapter, model_base = time-token
+      base; set lora.enabled=false.
+  (B) fresh LoRA on a merged SFT model: model_path = model_base = merged model;
+      set lora.enabled=true. The reference policy is the merged SFT model.
+      The paper uses path (B).
 
-────────────────────────────────────────────────────────
-  [cdh/gdpo_trainer.py에 hyj/gdpo_trainer_rM_fp.py 의 최신 로직을 융합한버전]
-  cdh 베이스에서 유지:
-    - tti_mode (off/on): base config 의 time_token_id_range 활성/비활성 처리
-    - --reward_module 동적 선택 (reward_functions | reward_functions_rM_fp)
-    - SFT adapter 이어학습 시 RL trainable 제한 (q/k/v LoRA + embed/lm_head)
-    - generate 중 GC 강제 ON/OFF (모듈 순회, use_reentrant=False)
-    - 상위호환 ref 로직 (_is_peft_model 분기)
-  hyj 에서 이식:
-    - 머지 모델 위 fresh RL LoRA 학습 (config.lora.enabled → peft_config)
-    - generation: top_k=50 / repetition_penalty=1.0 (다양성 + time-token 반복 허용)
-    - resume_from_checkpoint 지원
-    - rank-0 한정 로깅 + raw/sec segment 디버그 출력
-    - get_peft_model 후 enable_input_require_grads 재적용
-  clip 버전(gdpo_trainer_clip.py)에서 통합:
-    - DAPO clip-higher (ε_high>ε_low) clipped surrogate loss (config.clip.*)
-    - μ(num_iterations)>1 rollout 재사용 — _RepeatSampler + rollout 캐시
-      (_generate_rollout/_completion_logps 분리). μ=1 이면 기존 GDPO 와 수치 동일.
-    - ratio / clip_frac 진단 메트릭 로깅
-    - reward 채널은 가변(CoT 포함)으로 유지 — clip 경로와 무관하게 동작
-    ⚠️ clip-higher 는 공용 기본값에서 OFF (config.yaml: clip.num_iterations=1 →
-       μ=1 이라 clip 미작동 = 기존 GDPO 와 수치 동일). 켜려면 clip.num_iterations>1.
-       [통합] grad_accum>1 과 병행 가능(block-repeat sampler) — 더는 grad_accum=1 강제 아님.
-       (config_clip.yaml / config_*sep*.yaml / CLI override.)
+Usage (see gdpo/run_rMsep3_uncha_noscaling_1gpu.sh for the paper run):
+  torchrun --standalone --nproc_per_node=1 gdpo/gdpo_trainer_batch.py       --config        gdpo/config_sep3_uncha_1gpu.yaml       --model_path    $CKPT_DIR/base/salmonn2p_7b_unav_v8       --model_base    $CKPT_DIR/base/salmonn2p_7b_unav_v8       --dataset_path  $DATA_DIR/gdpo/train.json       --reward_module reward_functions_rM_sep3 --tti_mode on       --output_dir    $CKPT_DIR/gdpo/titok_gdpo
 
-두 가지 학습 경로 (model_path 가 무엇이냐로 자동 분기):
-  (A) adapter 이어학습 : model_path=SFT LoRA adapter, model_base=time-token base
-                          → adapter 로드 + RL trainable 제한. ref = pre-SFT base.
-  (B) fresh LoRA       : model_path=model_base=SFT-머지 모델, config.lora.enabled=true
-                          → 머지 weight 위 새 LoRA. ref = SFT 정책(LoRA disable).
+CLI arguments (CLI > YAML config > built-in defaults):
+  --config                  YAML config; ${VAR} values are expanded from the environment.
+  --model_path              [required] SFT adapter (path A) or merged SFT model (path B).
+  --model_base              time-token base model.
+  --dataset_path            [required] training JSON.
+  --output_dir              checkpoint / log directory.
+  --max_steps   int         > 0 overrides num_train_epochs.
+  --run_name    str         W&B run name (default: output_dir basename).
+  --tti_mode    off|on      time-token interleaving; must match the data and model.
+  --reward_module str       reward module name. A module may declare
+                            REWARD_CHANNELS = [(name, fn, needs_gt), ...].
+  --val_path                force validation on with this JSON.
+  --resume_from_checkpoint  'True' = latest checkpoint in output_dir, or a path.
 
-Usage:
-  # 0) 환경 준비 — CKPT_DIR / TRAIN_DIR / WANDB_* 는 paths.env 로 이미 환경에 export 돼 있음
-  #    (모델 경로는 아래처럼 CLI 인자로 직접 전달. SFT_CKPT/BASE_MODEL export 불필요.)
-  conda activate salmonn2p
-
-  # 1) 기본 (모델/데이터 경로를 CLI 로 직접 지정)
-  python gdpo/gdpo_trainer_batch.py \
-      --config       gdpo/config_sep3.yaml \
-      --model_path   ${CKPT_DIR}/sft/salmonn2p_7b_unav_fps5_off \
-      --model_base   ${CKPT_DIR}/video_salmonn2_plus_7B_time_tokens \
-      --dataset_path ${TRAIN_DIR}/unav100_v2.json
-
-  # 2) 멀티 GPU
-  export CUDA_VISIBLE_DEVICES=0,1,2,3
-  torchrun --standalone --nproc_per_node=4 \
-      gdpo/gdpo_trainer_batch.py \
-      --config       gdpo/config_sep3.yaml \
-      --model_path   ${CKPT_DIR}/sft/salmonn2p_7b_unav_fps5_off \
-      --model_base   ${CKPT_DIR}/video_salmonn2_plus_7B_time_tokens \
-      --dataset_path ${TRAIN_DIR}/unav100_v2.json
-
-  # 3) 모든 CLI 인자를 명시 (CLI > config.yaml 우선)
-  python gdpo/gdpo_trainer_batch.py \
-      --config       gdpo/config_sep3.yaml \
-      --model_path   ${CKPT_DIR}/sft/salmonn2p_7b_unav_fps5_off \  # 경로A=SFT LoRA adapter / 경로B=SFT-머지 모델 (필수)
-      --model_base   ${CKPT_DIR}/video_salmonn2_plus_7B_time_tokens \  # time-token VS2+ base
-      --dataset_path ${TRAIN_DIR}/unav100_v2.json \  # 학습 JSON (필수)
-      --output_dir   ${CKPT_DIR}/gdpo/salmonn2p_7b_unav_rM \  # 체크포인트/로그 저장 (미지정→output/gdpo_vs2plus)
-      --max_steps    1000 \                  # >0 이면 num_train_epochs 무시 (smoke-test/길이제한)
-      --run_name     gdpo_rM_run1 \          # wandb/tracker run 이름 (미지정→output_dir basename)
-      --tti_mode     off \                   # off | on  (모델 time_token_id_range ↔ 데이터 마커 짝)
-      --reward_module reward_functions \     # reward 구현 교체 (아래 표)
-      --resume_from_checkpoint True          # True=output_dir 최신 자동재개 / 경로=특정 / 미지정=처음부터
-
-  # 4) 빠른 동작 확인 (3 step)
-  python gdpo/gdpo_trainer_batch.py \
-      --config       gdpo/config_sep3.yaml \
-      --model_path   ${CKPT_DIR}/sft/salmonn2p_7b_unav_fps5_off \
-      --model_base   ${CKPT_DIR}/video_salmonn2_plus_7B_time_tokens \
-      --dataset_path ${TRAIN_DIR}/unav100_v2.json \
-      --max_steps 3
-
-  # 5) 체크포인트에서 재개 (모델/데이터 경로는 동일하게 전달)
-  python gdpo/gdpo_trainer_batch.py \
-      --config       gdpo/config_sep3.yaml \
-      --model_path   ${CKPT_DIR}/sft/salmonn2p_7b_unav_fps5_off \
-      --model_base   ${CKPT_DIR}/video_salmonn2_plus_7B_time_tokens \
-      --dataset_path ${TRAIN_DIR}/unav100_v2.json \
-      --output_dir   ${CKPT_DIR}/gdpo/salmonn2p_7b_unav_rM \
-      --resume_from_checkpoint ${CKPT_DIR}/gdpo/salmonn2p_7b_unav_rM/checkpoint-500
-
-  # 6) 백그라운드 실행 (SSH 끊겨도 유지) — setsid+nohup 으로 세션 분리 + HUP 무시.
-  #    학습 로그는 output_dir/train.log 로 남으므로 콘솔 출력은 /dev/null 로 버림.
-  #    (관리: tail -f $OUT/train.log / ps -ef|grep gdpo_trainer / pkill -f gdpo_trainer.py)
-  OUT=${CKPT_DIR}/gdpo/salmonn2p_7b_unav_rM
-  setsid nohup python gdpo/gdpo_trainer_batch.py \
-      --config       gdpo/config_sep3.yaml \
-      --model_path   ${CKPT_DIR}/sft/salmonn2p_7b_unav_fps5_off \
-      --model_base   ${CKPT_DIR}/video_salmonn2_plus_7B_time_tokens \
-      --dataset_path ${TRAIN_DIR}/unav100_v2.json \
-      --output_dir   "$OUT" \
-      < /dev/null > /dev/null 2>&1 &
-
-CLI 인자 (모두 선택; 미지정 시 config.yaml → 내부 기본값 순으로 fallback):
-  --config                  config.yaml 경로. 나머지 인자/하이퍼파라미터의 기본 소스.
-  --model_path              [필수] SFT adapter(경로A, adapter_config.json 존재) 또는
-                            SFT-머지 모델(경로B). 어느 쪽이냐로 학습 경로 자동 분기.
-                            (config: model.model_path)
-  --model_base              VS2+ time-token base 모델. (config: model.model_base)
-  --dataset_path            [필수] UnAV-100 multi-segment QA JSON. (config: data.dataset_path)
-  --output_dir              체크포인트/로그 저장 경로. (config: training.output_dir / 기본 output/gdpo_vs2plus)
-  --max_steps   int         step 수 제한. >0 이면 num_train_epochs 무시. (config: training.max_steps)
-  --run_name    str         wandb/tracker run 이름. (config: logging.run_name / 기본 output_dir basename)
-  --tti_mode    off|on      TTI 모드. off=time_token_id_range 무시(rope OFF 분기) /
-                            on=base config 유지(rope ON 분기, 데이터에 마커 필요).
-                            (config: model.tti_mode / 기본 off)
-  --reward_module str       reward 함수 모듈명. (config: reward.module / 기본 reward_functions)
-                              reward_functions       → 채널 [format, iou(=MUSEG r_M)]
-                              reward_functions_rM_fp  → iou = r_M - K*n_unmatched_pred (FP penalty)
-                              reward_functions_prec   → iou = r_M - λ*outside_ratio (precision penalty)
-                              reward_functions_rM_cov → iou = r_M - γ*coverage_excess (길이편향 억제)
-                              reward_functions_f1     → iou = F1(best-match) 베이스라인
-                              reward_functions_rM_sep → 채널 [format, len, global(F1), local]
-                                                        (학습신호 세분화 — multi-seg 붕괴 대응)
-                            ── 채널 호환 (load_reward_module) ──
-                            모듈이 REWARD_CHANNELS=[(name,fn,needs_gt),...] 를 선언하면 그대로
-                            사용(임의 채널 수/이름). 없으면 format_reward/iou_reward(+옵션
-                            timestamp/modality) convention 으로 조립. → 새 채널 reward 를
-                            추가해도 trainer 무수정. reward_weights 길이는 채널 수에 자동정렬,
-                            wandb 는 rewards/<채널명> 으로 자동 로깅.
-  --resume_from_checkpoint  'True'=output_dir 내 최신 체크포인트 자동 재개 /
-                            <경로>=특정 체크포인트 / 미지정=처음부터.
-
-학습 경로별 주의:
-  - 경로A(adapter 이어학습): config 의 lora.enabled=false 로 둘 것 (PeftModel 이중 적용 방지).
-  - 경로B(fresh LoRA)     : config 의 lora.enabled=true.
-
-config 파일(모두 이 통합 트레이너로 실행):
-  - config.yaml            : 팀 공용 기본 (num_iterations=1, multi_seg_weight=1.0 → 기존 GDPO 동일)
-  - config_clip.yaml       : clip-higher 실험 (μ=2)
-  - config_clip_sep.yaml   : 세분화 reward(reward_functions_rM_sep, 4채널) + clip-higher
-  - config_clip2_sep2.yaml : 세분화 reward(sep2) + clip-higher + grad_accum>1(block-repeat)
-  - config_clip2_sep2_mu1.yaml : sep2 + grad_accum>1, clip OFF(μ=1, 순수 GDPO + 큰 배치)
-  - config_v2_rM_fp.yaml   : reward_functions_rM_fp (r_M + FP 페널티)
-  - config_cot*.yaml       : CoT(<think>/<answer>) reward(reward_functions_*cot*) + CoT 데이터셋
-
-clip-higher (config.clip.*):
-  clipped surrogate loss = -min( r·A, clip(r, 1-ε_low, 1+ε_high)·A ).  μ(num_iterations)>1 이라야
-  r=exp(new-old)≠1 → clip 이 실제 binding.
-  [통합] grad_accum>1 도 지원 — block-repeat sampler 가 μ iteration 사이 optimizer.step() 을
-  보장하므로 grad_accum=1 강제 아님(effective batch = grad_accum × num_gpu).
-
-디버그 env:
-  TTI_DEBUG=1 [TTI_DEBUG_STEPS=3]   rank-0 한정, 첫 N step 동안 TTI 정합성 계측 출력.
-  LEN_REWARD_MODE=binary|graded     reward_functions_rM_sep 의 len 채널 모드 (기본 binary).
-                                    graded=1-|n_pred-n_gt|/max — near-collapse 에서 gradient 생존.
+Debug environment variables:
+  TTI_DEBUG=1 [TTI_DEBUG_STEPS=3]   print TTI consistency checks on rank 0 for the first N steps.
 """
 
 import argparse
@@ -487,7 +347,7 @@ class GDPOTrainer(Trainer):
         # 이전처럼 인코더 분리를 할 필요가 없음.
         if peft_config is not None:
             model = get_peft_model(model, peft_config)
-            # [hyj] gradient_checkpointing + 얼린 base 조합에서 fresh LoRA 로 grad 가
+            # gradient_checkpointing + 얼린 base 조합에서 fresh LoRA 로 grad 가
             # 흐르도록 임베딩 출력에 requires_grad 재적용 (fresh LoRA 경로 필수).
             if hasattr(model, "enable_input_require_grads"):
                 model.enable_input_require_grads()
@@ -550,8 +410,8 @@ class GDPOTrainer(Trainer):
             do_sample=True,
             temperature=self.temperature,
             top_p=1.0,
-            top_k=50,                 # [hyj] base config top_k=1 override (다양성 확보)
-            repetition_penalty=1.0,   # [hyj] time token 반복 페널티 제거
+            top_k=50,                 # base config top_k=1 override (다양성 확보)
+            repetition_penalty=1.0,   # time token 반복 페널티 제거
             num_return_sequences=self.num_generations,
             pad_token_id=pad_token_id,
         )
@@ -1063,7 +923,7 @@ class GDPOTrainer(Trainer):
         _vp = _vid[0] if isinstance(_vid, (list, tuple)) and _vid else _vid
         R["source_tag"] = _dataset_tag(_vp)
 
-        # ── [hyj] 디버그: GT/예측 세그먼트 raw + 초 단위 출력 (rank 0) ──
+        # ── 디버그: GT/예측 세그먼트 raw + 초 단위 출력 (rank 0) ──
         if self.accelerator.is_main_process:
             _SEG_CAPTURE_DEBUG = re.compile(
                 r"[Ff]rom\s+((?:<t\d>){1,4}<tdot><t\d>)\s+to\s+((?:<t\d>){1,4}<tdot><t\d>)"
@@ -1894,7 +1754,7 @@ def main():
     max_completion_length = _get(None, "gdpo", "max_completion_length", default=512)
     beta = _get(None, "gdpo", "beta", default=0.04)
     reward_weights = _get(None, "gdpo", "reward_weights", default=[1.0, 1.0, 1.0])
-    # [hyj] temperature 를 config 에서 읽어 GRPOConfig 로 전달 (기존 cdh 는 누락 → 항상 기본값).
+    # temperature 를 config 에서 읽어 GRPOConfig 로 전달.
     temperature = float(_get(None, "gdpo", "temperature", default=1.0))
 
     # ── DAPO clip-higher (config: clip.*) ──────────────────────────────────
@@ -1946,7 +1806,7 @@ def main():
     transformers.set_seed(seed)
     model, tokenizer = load_model_and_tokenizer(model_path, model_base, tti_mode=tti_mode)
 
-    # ── [hyj] PEFT — RL용 fresh LoRA (경로 B) ──────────────────────────────
+    # ── PEFT — RL용 fresh LoRA (경로 B) ──────────────────────────────
     # model_path 가 SFT-머지 모델(adapter_config.json 없음)일 때, SFT 어댑터를 다시
     # 얹지 않고 머지 weight 위에 새 LoRA 를 만들어 RL 학습한다. ref 모델은 GDPOTrainer 가
     # LoRA disable 로 처리(=SFT 정책).  config.lora.enabled=true 일 때만 활성.
@@ -2171,7 +2031,7 @@ def main():
         print(f"[GDPO clip2] ⚠️ effective batch={_eff_batch} (<4). reward 추정/gradient noisy 할 수 있음 "
               f"→ grad_accum 또는 GPU 수 ↑ 권장.")
 
-    # Trainer  ([hyj] peft_config 전달 → 경로 B 일 때 fresh LoRA 적용)
+    # Trainer  (peft_config 전달 → 경로 B 일 때 fresh LoRA 적용)
     trainer = GDPOTrainer(
         model=model,
         reward_funcs=reward_funcs,
@@ -2200,7 +2060,7 @@ def main():
               f"[{_names}] (greedy, max_new={val_max_new}, max_time={val_max_time}) → "
               f"{output_dir}/val_metrics.jsonl  (top-level combined = 세트 평균)")
 
-    # Train ([hyj] resume 지원: 'True'=최신 체크포인트 자동 / 경로=특정 체크포인트 / None=처음부터)
+    # Train (resume 지원: 'True'=최신 체크포인트 자동 / 경로=특정 체크포인트 / None=처음부터)
     _rc = cli.resume_from_checkpoint
     if _rc in ("", "None"):
         _rc = None

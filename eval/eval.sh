@@ -14,23 +14,18 @@
 #   pairwise_miou_summary.json  union_miou_summary.json  sample_miou_summary.json
 #   inference.log (infer), eval_miou_progress.jsonl (chunk 진행 스냅샷)
 #
-# ── 사용 예 ──────────────────────────────────────────────
-#  # 1) base+LoRA, 단일 JSON 추론+평가
-#  bash eval.sh STAGE=gdpo CKPT_MODEL_ID=sft_7b_unav_v8_rl_v2_rMsep_clip_mu2 CKPT_STEP=1000 \
-#       BASE_MODEL_ID=base/salmonn2p_7b_puvalor_off_v2 \
-#       TEST_JSON=/workspace/data/test/unav100_v2_500.json GPUS=0
+# ── Examples (run from the repo root) ─────────────────────
+#  # 1) GDPO LoRA checkpoint on UnAV-100 (base model + adapter)
+#  bash eval/eval.sh STAGE=gdpo CKPT_MODEL_ID=titok_gdpo CKPT_STEP=2000 #       BASE_MODEL_ID=base/salmonn2p_7b_unav_v8 TEST_JSON=data/test/unav100.json GPUS=0
 #
-#  # 2) 청크 추론 (대용량 testset; data/test/<TESTSET>/chunk_*.json 필요)
-#  bash eval.sh CHUNK=on STAGE=sft CKPT_MODEL_ID=salmonn2p_7b_unav_baseline CKPT_STEP=1500 \
-#       BASE_MODEL_ID=base/video_salmonn2_plus_7B_time_tokens TESTSET=unav100 GPUS=0
+#  # 2) Chunked inference with automatic resume (splits data/test/<TESTSET>.json)
+#  bash eval/eval.sh CHUNK=on STAGE=gdpo CKPT_MODEL_ID=titok_gdpo CKPT_STEP=2000 #       BASE_MODEL_ID=base/salmonn2p_7b_unav_v8 TESTSET=unav100 GPUS=0
 #
-#  # 3) full-merged 체크포인트 직접 평가 (LoRA 머지 X)
-#  bash eval.sh MERGED_MODEL=/workspace/checkpoints/base/salmonn2p_7b_puvalor_off_v2 \
-#       TEST_JSON=/workspace/data/test/unav100_v2_cot_50.json GPUS=0
+#  # 3) A fully merged model (no LoRA), e.g. the SFT model
+#  bash eval/eval.sh MERGED_MODEL=checkpoints/base/salmonn2p_7b_unav_v8 #       TEST_JSON=data/test/unav100.json GPUS=0
 #
-#  # 4) 이미 추론된 결과만 재평가 (GPU 불필요). CoT/자연어면 NATURAL=on
-#  bash eval.sh MODE=eval RESULTS=/workspace/outputs/.../test_results_rank0.json \
-#       TEST_JSON=/workspace/data/test/unav100_v2_500.json NATURAL=on
+#  # 4) Re-score existing predictions only (no GPU)
+#  bash eval/eval.sh MODE=eval RESULTS=outputs/.../test_results_rank0.json #       TEST_JSON=data/test/unav100.json
 # ============================================================
 set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -42,7 +37,7 @@ CHUNK_SIZE=500
 STAGE=sft                  # sft | gdpo
 CKPT_MODEL_ID=
 CKPT_STEP=                 # 빈값=latest checkpoint-*, base/no=base, 숫자/checkpoint-N
-BASE_MODEL_ID=video_salmonn2_plus_7B_time_tokens
+BASE_MODEL_ID=base/video_salmonn2_plus_7B_time_tokens
 MERGED_MODEL=              # 설정 시 이 경로를 직접 로드(lora_ckpt=No), STAGE/CKPT_* 무시
 TEST_JSON=                 # CHUNK=off / MODE=eval 의 GT(+추론 입력)
 TESTSET=                   # CHUNK=on 의 chunks 디렉토리 이름 (data/test/<TESTSET>/)
@@ -153,20 +148,15 @@ fi
 # ============================================================
 # MODE=infer : 추론 + 평가
 # ============================================================
-# runpod 전용 setup.sh 는 있으면만 source (랩 서버엔 없음)
-[ -f /workspace/setup.sh ] && source /workspace/setup.sh
-source "$SCRIPT_DIR/../paths.env"
-# conda 'activate' 셸 함수 로드 (비대화형 셸은 바이너리만 PATH 에 있어 init 필요)
-if ! declare -F conda >/dev/null 2>&1; then
-    _cbase="$(conda info --base 2>/dev/null)"
-    for _c in "$_cbase" "$HOME/anaconda3" "$HOME/miniconda3" /opt/conda; do
-        [ -n "$_c" ] && [ -f "$_c/etc/profile.d/conda.sh" ] && source "$_c/etc/profile.d/conda.sh" && break
-    done
-fi
-conda activate "${CONDA_ENV:-salmonn2p}"
-# 저장 루트: OUT_ROOT > paths.env 의 EVAL_DIR > (최후) /workspace/outputs
-export EVAL_DIR="${OUT_ROOT:-${EVAL_DIR:-/workspace/outputs}}"
-export ARNOLD_WORKER_NUM=1 ARNOLD_ID=0 METIS_WORKER_0_HOST=localhost
+# Paths (REPO_ROOT, DATA_DIR, CKPT_DIR, OUTPUT_DIR, MEDIA_ROOT) come from paths.env.
+# Activate the Python environment (see README) before running this script.
+source "$SCRIPT_DIR/../scripts/env.sh"
+export EVAL_DIR="${OUT_ROOT:-$OUTPUT_DIR}"
+TEST_DIR="$DATA_DIR/test"
+# Relative CLI paths are given from the repo root; make them absolute before cd.
+[ -n "$TEST_JSON" ] && TEST_JSON="$(realpath -m "$TEST_JSON")"
+[ -n "$MERGED_MODEL" ] && MERGED_MODEL="$(realpath -m "$MERGED_MODEL")"
+[ -n "$OUT_DIR" ] && OUT_DIR="$(realpath -m "$OUT_DIR")"
 
 NUM_GPUS=$(echo "$GPUS" | awk -F',' '{print NF}')
 export CUDA_VISIBLE_DEVICES=$GPUS
@@ -183,7 +173,7 @@ case "${TTI_TIME_FORMAT:-off}" in
 esac
 EVAL_TAG="fps${FPS_INT}_${FORMAT_TAG}"
 
-BASE_CODE="${BASE_DIR}/video_SALMONN2_plus"
+BASE_CODE="${REPO_ROOT}/video_SALMONN2_plus"
 MODEL_BASE="${CKPT_DIR}/${BASE_MODEL_ID}"
 
 # ---- 모델 해석: MERGED_MODEL > CKPT_STEP=base > base+LoRA ----
@@ -230,9 +220,13 @@ fi
 
 # ---- testset 소스 / 태그 / OUT_DIR ----
 if [ "$CHUNK" = "on" ]; then
-    [ -n "$TESTSET" ] || { echo "[에러] CHUNK=on 은 TESTSET= 필요 (data/test/<TESTSET>/)"; exit 1; }
-    CHUNKS_DIR="${TEST_DIR}/${TESTSET}"
-    [ -d "$CHUNKS_DIR" ] || { echo "[에러] chunks 디렉토리 없음: $CHUNKS_DIR (먼저 _chunk_helpers.py split)"; exit 1; }
+    [ -n "$TESTSET" ] || { echo "[error] CHUNK=on requires TESTSET= (reads data/test/<TESTSET>.json)"; exit 1; }
+    CHUNKS_DIR="${EVAL_DIR}/.chunks/${TESTSET}_${CHUNK_SIZE}"
+    if [ ! -d "$CHUNKS_DIR" ]; then
+        SRC_JSON="${TEST_DIR}/${TESTSET}.json"
+        [ -f "$SRC_JSON" ] || { echo "[error] test set not found: $SRC_JSON"; exit 1; }
+        python3 "$HELPER" split --test_json "$SRC_JSON" --chunks_dir "$CHUNKS_DIR" --chunk_size "$CHUNK_SIZE"
+    fi
     [ -z "$TESTSET_TAG" ] && TESTSET_TAG="$TESTSET"
     # _full.json (eval GT 용; 없으면 생성)
     TEST_JSON="${CHUNKS_DIR}/_full.json"

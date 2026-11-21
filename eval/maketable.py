@@ -28,7 +28,7 @@ maketable.py — 폴더 경로를 주면 그 하위의 모든 평가 summary 를
 
   --full : 기존 21열(F1@0.9, CR/FMR, SCR, R@θ, gt/pred(mean) 포함) 로 출력.
 
-사용:  python3 maketable.py /home/team404/workspace/outputs/gdpo
+사용:  python3 eval/maketable.py outputs/gdpo
 """
 import argparse
 import json

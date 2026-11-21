@@ -1,65 +1,56 @@
 #!/bin/bash
 # ============================================================
-# v8: SFT-as-format-teacher  (IF 보존 + time token 형식만 학습)
-#   패러다임 전환 (v7 검증 결과 반영):
-#     - v7는 PU-VALOR로 grounding + format 동시 학습 → IF 0% (1500 step만에 사라짐)
-#     - v8는 grounding은 GDPO에 위임, SFT는 time-token 형식 + multimodal alignment 만
+# TiTok stage 1: SFT (paper setting, 4 GPUs, effective batch 8).
 #
-#   v7 대비 핵심 변경:
-#     1) 데이터: PU-VALOR 91k → UnAV-100 v2.json 10k
-#        - RL(=GDPO) 단계와 분포 일치
-#        - "format hint 있고 wrapper 없는" prompt (시간토큰 형식만 학습)
-#     2) 시작 모델: 원본 base (v7 ckpt 사용 X, IF 살아있는 깨끗한 시작점)
-#     3) LoRA capacity 대폭 축소:
-#        - r:        128 → 16
-#        - alpha:    128 → 16  (scaling 1.0 유지)
-#        - dropout:  0.05 → 0.1
-#        → q/k/v/o attention 분포 변형 최소 → IF 보존
-#     4) LR: 모두 1e-4 유지 (v7와 동일).
-#        - LoRA: r=16 capacity 8x ↓ 가 이미 drift 8배 줄임 → LR 추가로 낮출 필요 없음
-#          오히려 학습 step 1295 (v7의 1/9)라 LR 유지해야 형식 학습에 충분
-#        - embed/lm_head: row-mask 가 wrapper row 강제 freeze → time-token row만 안전 학습
-#     4-bis) Best ckpt 선택: 학습 중 자동 X (eval_loss 가 IF 보존을 반영 못 함).
-#        save_total_limit=10 으로 모든 ckpt 저장, 사후 50-sample IF test 로 best ckpt 선택.
-#     5) TTI: special_token → off
-#        - base 모델은 TTI 없이 학습됨, 분포 일치 우선
-#     6) 학습 길이: epoch=1 (~1295 step), eval/save 매 250 step
-#        - 250-step 마다 IF retention 정량 측정 (50-sample wrapper rate)
-#        - wrapper rate < 50% 떨어지면 조기 종료 후보
-#     7) multimodal modules (visual.merger, audio.qformer/q_tokens/proj):
-#        v7와 동일 LR, trainable 유지 — LLM IF 영향 없으면서 audio/video→LLM 정렬 학습
+#   bash v8_sft/_tools/train_v8.sh
+#   EVAL_DATASET=<json> bash v8_sft/_tools/train_v8.sh   # optional held-out loss every 250 steps
 #
-#   GPU: 0,1,2,3 (4 GPUs, grad_accum=2, effective batch=8)
+# The SFT stage only teaches the time-token output format and audio/video
+# alignment; temporal grounding itself is learned in the GDPO stage.
+#   - data:  UnAV-100 training split (data/sft/unav100_sft.json), 1 epoch
+#   - start: video-SALMONN 2+ 7B with time tokens added
+#            (tools/sft/add_time_tokens_salmonn2plus.py)
+#   - LoRA r=16 / alpha=16 / dropout=0.1 on q,k,v,o to preserve instruction following
+#   - only the time-token rows of embed_tokens / lm_head are trained
+#   - TTI is off during SFT
+# A checkpoint is saved every 250 steps; the paper uses checkpoint-250,
+# merged into the base with v8_sft/_tools/merge_v8_unav_to_base.py.
 # ============================================================
 set -eo pipefail
-source /home/aix23102/anaconda3/etc/profile.d/conda.sh
-conda activate salmonn2plus
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../scripts/env.sh"
 
-export CUDA_VISIBLE_DEVICES=0,1,2,3
-export ARNOLD_WORKER_GPU=4
-export ARNOLD_WORKER_NUM=1
-export ARNOLD_ID=0
-export METIS_WORKER_0_HOST=localhost
+export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0,1,2,3}"
+export ARNOLD_WORKER_GPU="$(echo "$CUDA_VISIBLE_DEVICES" | awk -F',' '{print NF}')"
+MASTER_PORT="${MASTER_PORT:-29500}"
 
 export TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC=1800
 export NCCL_TIMEOUT=1800000
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
-cd /home/aix23102/audiolm/workspace/master/Team4/v8_sft/video_SALMONN2_plus
+MODEL="${MODEL:-$CKPT_DIR/base/video_salmonn2_plus_7B_time_tokens}"
+MODEL_BASE="$MODEL"
+DATASET="${DATASET:-$DATA_DIR/sft/unav100_sft.json}"
+RUN_NAME="${RUN_NAME:-titok_sft}"
+OUTPUT_DIR="${OUT:-$CKPT_DIR/sft/$RUN_NAME}"
 
-MODEL=/data0/aix23102/checkpoints_open_aligner/video_salmonn2_plus_7B_time_tokens
-MODEL_BASE=$MODEL
-DATASET=/home/aix23102/audiolm/Team404/data/train/unav100_v2.json
-EVAL_DATASET=/home/aix23102/audiolm/Team404/data/test/unav100_v2_500.json
-OUTPUT_DIR=/data0/aix23102/checkpoints_open_aligner/salmonn2plus_v8
-RUN_NAME=salmonn2plus_v8
+for p in "$MODEL/config.json" "$DATASET"; do
+    [ -e "$p" ] || { echo "[error] not found: $p" >&2; exit 1; }
+done
+
+if [ -n "$EVAL_DATASET" ]; then
+    EVAL_ARGS=(--eval_dataset_use "$EVAL_DATASET" --eval_strategy steps --eval_steps 250)
+else
+    EVAL_ARGS=(--eval_strategy no)
+fi
+
 mkdir -p "$OUTPUT_DIR"
+cd "$REPO_ROOT/v8_sft/video_SALMONN2_plus"
 
-torchrun --standalone --nproc_per_node=$ARNOLD_WORKER_GPU \
+torchrun --standalone --nproc_per_node="$ARNOLD_WORKER_GPU" --master_port="$MASTER_PORT" \
     qwenvl/train/train_qwen.py \
     --deepspeed scripts/zero2.json \
     --model_name_or_path "$MODEL" --model_base "$MODEL_BASE" \
-    --dataset_use "$DATASET" --eval_dataset_use "$EVAL_DATASET" \
+    --dataset_use "$DATASET" "${EVAL_ARGS[@]}" \
     --tune_mm_vision False --tune_mm_mlp True --tune_mm_llm False \
     --tune_mm_audio False --tune_mm_qformer True \
     --use_lora True --lora_r 16 --lora_alpha 16 --lora_dropout 0.1 \
@@ -70,7 +61,6 @@ torchrun --standalone --nproc_per_node=$ARNOLD_WORKER_GPU \
     --gradient_accumulation_steps 2 \
     --max_pixels 176400 --min_pixels 784 \
     --video_max_frame_pixels 28224 --video_min_frame_pixels 784 \
-    --eval_strategy "steps" --eval_steps 250 \
     --save_strategy "steps" --save_steps 250 \
     --save_total_limit 10 \
     --learning_rate 1e-4 --weight_decay 0 \
@@ -91,4 +81,5 @@ torchrun --standalone --nproc_per_node=$ARNOLD_WORKER_GPU \
     --train_type sft --no_audio False \
     2>&1 | tee -a "$OUTPUT_DIR/train.log"
 
-echo "[v8] training done."
+echo "[sft] done. Merge the paper checkpoint with:"
+echo "  python v8_sft/_tools/merge_v8_unav_to_base.py --lora_ckpt $OUTPUT_DIR/checkpoint-250"

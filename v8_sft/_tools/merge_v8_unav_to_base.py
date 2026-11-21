@@ -1,24 +1,39 @@
-"""
-Merge salmonn2plus_v8 / checkpoint-250 LoRA into base model.
-Produces a self-contained merged base usable for inference or further LoRA training.
+"""Merge the TiTok SFT LoRA checkpoint into the base model.
 
-Adapted from merge_puvalor_to_base.py with one fix:
-  v8 stores audio.q_tokens in a SEPARATE file (audio_q_tokens.safetensors), not in
-  adapter_model.safetensors. We load it explicitly so the trained q_tokens are baked in.
+Produces a self-contained model (checkpoints/base/salmonn2p_7b_unav_v8 in the
+paper) that the GDPO stage starts from and that can be evaluated directly.
+
+audio.q_tokens is saved in a separate file (audio_q_tokens.safetensors), not in
+adapter_model.safetensors, so it is loaded explicitly and baked into the output.
+
+Usage (from the repo root, after `source scripts/env.sh`):
+    python v8_sft/_tools/merge_v8_unav_to_base.py         --lora_ckpt $CKPT_DIR/sft/titok_sft/checkpoint-250
 """
-import os, sys
-sys.path.insert(0, '/home/aix23102/audiolm/workspace/master/Team4/v8_sft/video_SALMONN2_plus')
+import argparse
+import os
+import shutil
+import sys
+
+sys.path.insert(0, os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "video_SALMONN2_plus"))
 
 import torch
 from peft import PeftModel
 from safetensors.torch import load_file
 from qwenvl.model.modeling_qwen2_5_vl import video_SALMONN2_plus
 
-BASE = "/data0/aix23102/checkpoints/base/video_salmonn2_plus_7B_time_tokens"
-LORA_CKPT = "/data0/aix23102/checkpoints_open_aligner/salmonn2plus_v8/checkpoint-250"
-OUT = "/data0/aix23102/checkpoints/base/salmonn2p_7b_unav_v8"
+_ckpt_dir = os.environ.get("CKPT_DIR", "checkpoints")
+parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+parser.add_argument("--base", default=os.path.join(_ckpt_dir, "base", "video_salmonn2_plus_7B_time_tokens"),
+                    help="base model with time tokens (default: $CKPT_DIR/base/video_salmonn2_plus_7B_time_tokens)")
+parser.add_argument("--lora_ckpt", required=True, help="SFT LoRA checkpoint directory (paper: checkpoint-250)")
+parser.add_argument("--out", default=os.path.join(_ckpt_dir, "base", "salmonn2p_7b_unav_v8"),
+                    help="output directory (default: $CKPT_DIR/base/salmonn2p_7b_unav_v8)")
+args = parser.parse_args()
+BASE, LORA_CKPT, OUT = args.base, args.lora_ckpt, args.out
 
-assert not os.path.exists(OUT), f"OUT already exists: {OUT}"
+if os.path.exists(OUT):
+    sys.exit(f"[error] output directory already exists: {OUT}")
 os.makedirs(OUT, exist_ok=True)
 
 print(f"[1/6] Loading base model from {BASE}")
@@ -71,7 +86,6 @@ with torch.no_grad():
 print(f"[6/6] Saving merged model to {OUT}")
 model.save_pretrained(OUT, safe_serialization=True)
 
-import shutil
 for f in ["added_tokens.json", "merges.txt", "special_tokens_map.json",
           "tokenizer_config.json", "vocab.json", "preprocessor_config.json",
           "tokenizer.json", "chat_template.json", "generation_config.json"]:
