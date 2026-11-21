@@ -35,7 +35,6 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.append(str(project_root))
 
 from qwenvl.model.modeling_qwen2_5_vl import video_SALMONN2_plus
-from qwenvl.model.ordinal_head import OrdinalHead
 from qwenvl.data.dataset import make_supervised_data_module
 from qwenvl.data.image_processing_qwen2_vl_fast import Qwen2VLImageProcessorFast
 from qwenvl.train.argument import (
@@ -121,29 +120,6 @@ def safe_save_model_for_hf_trainer(trainer: transformers.Trainer, output_dir: st
         cpu_state_dict = {key: value.cpu() for key, value in state_dict.items()}
         del state_dict
         trainer._save(output_dir, state_dict=cpu_state_dict)  # noqa
-
-
-class SaveOrdinalHeadCallback(transformers.TrainerCallback):
-    """ord_head 의 state_dict 를 체크포인트 디렉토리에 sidecar 로 저장.
-
-    PEFT modules_to_save 에 속하지 않은 새 모듈이라 adapter_model.safetensors 에
-    포함되지 않음. resume / inference 시 별도 로딩 필요.
-    """
-
-    def on_save(self, args, state, control, model=None, **kwargs):
-        if not args.should_save or model is None:
-            return
-        inner = model.base_model.model if hasattr(model, "base_model") else model
-        if not hasattr(inner, "ord_head"):
-            return
-        ckpt_dir = os.path.join(args.output_dir, f"checkpoint-{state.global_step}")
-        if not os.path.isdir(ckpt_dir):
-            return
-        from safetensors.torch import save_file
-        sd = {f"ord_head.{k}": v.detach().cpu() for k, v in inner.ord_head.state_dict().items()}
-        out_path = os.path.join(ckpt_dir, "ord_head.safetensors")
-        save_file(sd, out_path)
-        print(f"[SAVE] ord_head -> {out_path}  ({sum(v.numel() for v in sd.values())} params)")
 
 
 class SaveQTokensCallback(transformers.TrainerCallback):
