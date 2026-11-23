@@ -1,0 +1,41 @@
+# ============================================================
+# Inference / evaluation settings for eval/eval.sh
+#
+# Flat KEY: VALUE YAML read by eval/eval.sh.
+# STAGE / MODEL_ID / CKPT / BASE_MODEL_ID / DATASET_NAME / GPUS
+# are passed on the command line; this file only holds inference/eval settings.
+# ============================================================
+
+# ---- DeepSpeed ----
+DEEPSPEED_CONFIG: scripts/zero2.json
+
+# ---- Image / video resolution ----
+MAX_PIXELS: 176400
+MIN_PIXELS: 784
+VIDEO_MAX_FRAME_PIXELS: 28224
+VIDEO_MIN_FRAME_PIXELS: 784
+VIDEO_MIN_FRAMES: 64
+VIDEO_MAX_FRAMES: 128
+BASE_INTERVAL: 0.2
+
+# ---- Runtime ----
+MODEL_MAX_LENGTH: 10000
+DATALOADER_NUM_WORKERS: 2
+GRADIENT_CHECKPOINTING: True
+NO_AUDIO: False
+
+# ---- Required by the Trainer but unused during evaluation ----
+PER_DEVICE_TRAIN_BATCH_SIZE: 1
+GRADIENT_ACCUMULATION_STEPS: 1
+LEARNING_RATE: 1e-5
+NUM_TRAIN_EPOCHS: 1
+EVAL_STRATEGY: "no"
+SAVE_STRATEGY: "no"
+REPORT_TO: none
+
+# ---- mIoU evaluation (passed to eval_miou.py) ----
+MAX_TIME: 999.9
+
+# ---- TTI input-side time-marker format (must match training) ----
+# off | special_token | natural_text
+TTI_TIME_FORMAT: special_token
