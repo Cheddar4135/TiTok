@@ -35,6 +35,10 @@ if os.path.exists(OUT):
     sys.exit(f"[error] output directory already exists: {OUT}")
 os.makedirs(OUT, exist_ok=True)
 
+for _label, _p in (("--base", BASE), ("--lora_ckpt", LORA_CKPT)):
+    if not os.path.isdir(_p):
+        sys.exit(f"[error] {_label} directory not found: {_p}")
+
 print(f"[1/6] Loading base model from {BASE}")
 model = video_SALMONN2_plus.from_pretrained(
     BASE,
@@ -66,15 +70,17 @@ non_lora = {k.replace("base_model.model.", "", 1): v
 missing, unexpected = model.load_state_dict(non_lora, strict=False)
 print(f"[5/6] Loaded {len(non_lora)} non-LoRA weights "
       f"(state_dict missing={len(missing)}, unexpected={len(unexpected)})")
-assert len(unexpected) == 0, f"Unexpected keys when loading non-LoRA: {unexpected[:10]}"
+if unexpected:
+    sys.exit(f"[error] unexpected keys when loading non-LoRA weights: {unexpected[:10]}")
 
 # audio.q_tokens lives in a SEPARATE file in v8 — load it explicitly.
 q_path = os.path.join(LORA_CKPT, "audio_q_tokens.safetensors")
-assert os.path.exists(q_path), f"missing q_tokens file: {q_path}"
+if not os.path.exists(q_path):
+    sys.exit(f"[error] missing {q_path}; pass an SFT checkpoint saved by sft/scripts/train_sft.sh")
 q_state = load_file(q_path)  # {'audio.q_tokens': tensor[1,1,3072]}
 qm, qu = model.load_state_dict(q_state, strict=False)
-assert len(qu) == 0, f"Unexpected q_tokens keys: {qu}"
-assert "audio.q_tokens" not in qm, "audio.q_tokens key did not match model state_dict!"
+if qu or "audio.q_tokens" in qm:
+    sys.exit(f"[error] audio.q_tokens did not match the model state_dict (unexpected={qu})")
 print(f"  Loaded q_tokens {list(q_state.keys())} shape "
       f"{[tuple(v.shape) for v in q_state.values()]}")
 

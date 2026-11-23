@@ -1158,12 +1158,29 @@ def load_model_and_tokenizer(model_path, model_base, tti_mode="off"):
 # ============================================================
 
 def load_config(config_path: str) -> dict:
+    """Read the YAML config, expanding ${VAR} from the environment."""
+    if not os.path.isfile(config_path):
+        raise FileNotFoundError(f"[GDPO] config not found: {config_path}")
     with open(config_path, "r", encoding="utf-8") as f:
         raw = f.read()
+    unresolved = set()
+
     def _env_replace(match):
-        return os.environ.get(match.group(1), match.group(0))
-    raw = re.sub(r"\$\{(\w+)\}", _env_replace, raw)
-    return yaml.safe_load(raw)
+        val = os.environ.get(match.group(1))
+        if val is None:
+            unresolved.add(match.group(1))
+            return match.group(0)
+        return val
+    lines = []
+    for line in raw.split("\n"):
+        body = line.split("#", 1)[0]          # ignore variables in comments
+        lines.append(re.sub(r"\$\{(\w+)\}", _env_replace, body) + line[len(body):])
+    if unresolved:
+        raise ValueError(
+            f"[GDPO] {config_path} uses undefined environment variable(s) "
+            f"{', '.join(sorted(unresolved))}. Run through gdpo/scripts/train_gdpo.sh or "
+            f"`source scripts/env.sh` first.")
+    return yaml.safe_load("\n".join(lines))
 
 
 # ============================================================
@@ -1437,8 +1454,9 @@ class ValEvalCallback(transformers.TrainerCallback):
             for x in ds.list_data_dict:
                 segs = x.get("gt_segments") or []
                 gt_list.append([[float(s), float(e)] for s, e in segs])
-            assert len(gt_list) == len(ds), (
-                f"val[{name}] GT({len(gt_list)}) != dataset({len(ds)}): order/content mismatch")
+            if len(gt_list) != len(ds):
+                raise ValueError(
+                    f"val[{name}] GT({len(gt_list)}) != dataset({len(ds)}): order/content mismatch")
             self.val_sets.append({"name": name, "ds": ds, "gt": gt_list})
 
     def on_save(self, args, state, control, **kwargs):
@@ -1593,6 +1611,9 @@ def main():
 
     if model_path is None or dataset_path is None:
         parser.error("--model_path and --dataset_path are required")
+    for _label, _p in (("model_path", model_path), ("model_base", model_base), ("dataset_path", dataset_path)):
+        if _p is not None and not os.path.exists(_p):
+            parser.error(f"{_label} does not exist: {_p}")
 
     # -- record CLI arguments and environment next to the outputs (like train.log) --
     # rank 0 only; output_dir may not exist yet.

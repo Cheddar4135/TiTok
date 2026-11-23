@@ -73,7 +73,7 @@ def _merge_intervals(intervals: List[Tuple[float, float]]) -> List[Tuple[float, 
     """Merge overlapping or touching intervals and return their union."""
     if not intervals:
         return []
-    sorted_iv = sorted(intervals)
+    sorted_iv = sorted(tuple(iv) for iv in intervals)  # accept [s, e] lists as well as tuples
     merged = [sorted_iv[0]]
     for s, e in sorted_iv[1:]:
         last_s, last_e = merged[-1]

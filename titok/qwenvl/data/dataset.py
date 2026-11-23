@@ -113,6 +113,33 @@ def resolve_media_path(path):
     return os.path.join(media_root, path)
 
 
+def check_media_files(list_data_dict):
+    """Warn about missing video/audio files; fail if none of them exist.
+
+    A wrong MEDIA_ROOT otherwise only shows up as endless per-sample retries.
+    """
+    paths = []
+    for d in list_data_dict:
+        for key in ("video", "audio"):
+            v = d.get(key)
+            if isinstance(v, str):
+                paths.append(v)
+            elif isinstance(v, list):
+                paths.extend(p for p in v if isinstance(p, str))
+    if not paths:
+        return
+    missing = [p for p in paths if not os.path.exists(p)]
+    if len(missing) == len(paths):
+        raise FileNotFoundError(
+            f"None of the {len(paths)} video/audio files referenced by the dataset exist "
+            f"(e.g. {missing[0]}). Check MEDIA_ROOT in paths.env "
+            f"(currently {os.environ.get('MEDIA_ROOT')!r}) and the layout described in the README."
+        )
+    if missing and os.environ.get("LOCAL_RANK", "0") == "0":
+        print(f"[data] WARNING: {len(missing)}/{len(paths)} video/audio files are missing "
+              f"(e.g. {missing[0]}); these samples will be skipped.")
+
+
 def read_jsonl(path):
     with open(path, "r") as f:
         return [json.loads(line) for line in f]
@@ -429,6 +456,7 @@ class LazySupervisedDataset(Dataset):
                 )
 
         rank0_print(f"Total training samples: {len(list_data_dict)}")
+        check_media_files(list_data_dict)
 
         random.shuffle(list_data_dict)  # Randomly shuffle the data for training
 
