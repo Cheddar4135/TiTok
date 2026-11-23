@@ -46,8 +46,6 @@ CLI arguments (CLI > YAML config > built-in defaults):
   --val_path                force validation on with this JSON.
   --resume_from_checkpoint  'True' = latest checkpoint in output_dir, or a path.
 
-Debug environment variables:
-  TTI_DEBUG=1 [TTI_DEBUG_STEPS=3]   print TTI consistency checks on rank 0 for the first N steps.
 """
 
 import argparse
@@ -153,22 +151,8 @@ def load_reward_module(module_name: str):
 RewardFunc = Union[str, PreTrainedModel, Callable[[list, list], list[float]]]
 
 
-# ============================================================
-# TTI debug instrumentation (env TTI_DEBUG=1; rank 0 only, first N steps).
-#   No effect on normal runs (off).
-# ============================================================
-TTI_DEBUG = os.environ.get("TTI_DEBUG", "0").lower() in ("1", "true", "yes", "on")
-TTI_DEBUG_STEPS = int(os.environ.get("TTI_DEBUG_STEPS", "3"))  # only the first N compute_loss steps
-
-
 def _is_rank0() -> bool:
     return os.environ.get("RANK", os.environ.get("LOCAL_RANK", "0")) == "0"
-
-
-def _tti_dbg(msg: str):
-    """Print only when TTI_DEBUG is on and on rank 0."""
-    if TTI_DEBUG and _is_rank0():
-        print(f"[TTI-DBG] {msg}", flush=True)
 
 
 # Dataset tag for per-dataset reward logging: W&B keys rewards/<channel>/<tag>.
@@ -189,16 +173,6 @@ def _dataset_tag(video_path) -> str:
     if name.startswith("pu-valor") or name.startswith("puvalor"):
         return "puvalor"
     return "unknown"
-
-
-def count_time_markers(ids, id_range) -> int:
-    """Number of tokens in ids (1D tensor or list) inside the time-token id range [lo, hi]."""
-    if id_range is None:
-        return 0
-    lo, hi = id_range
-    if isinstance(ids, torch.Tensor):
-        return int(((ids >= lo) & (ids <= hi)).sum().item())
-    return sum(1 for x in ids if lo <= int(x) <= hi)
 
 
 # -- resume: RNG state loading workaround (torch>=2.4 defaults to weights_only=True) --
@@ -246,56 +220,14 @@ torch.load = _torch_load_trusted
 
 
 
-# ============================================================
-# Utilities
-# ============================================================
-
-def nanmin(tensor: torch.Tensor) -> torch.Tensor:
-    if torch.isnan(tensor).all():
-        return torch.tensor(float("nan"), dtype=tensor.dtype, device=tensor.device)
-    return torch.min(tensor[~torch.isnan(tensor)])
-
-def nanmax(tensor: torch.Tensor) -> torch.Tensor:
-    if torch.isnan(tensor).all():
-        return torch.tensor(float("nan"), dtype=tensor.dtype, device=tensor.device)
-    return torch.max(tensor[~torch.isnan(tensor)])
-
-
-
-
-
-# ============================================================
-# RepeatSampler (rollout reuse for mu > 1)
-# ============================================================
-
-class _RepeatSampler:
-    """Wrap a base sampler and yield each index num_repeat times in a row.
-
-    With mu > 1 the dataloader yields (i,i,j,j,...), so compute_loss generates a rollout
-    only on the first call and reuses the cache for the remaining mu-1 calls without
-    skipping distinct samples (same idea as TRL GRPOTrainer's RepeatSampler).
-    """
-    def __init__(self, base_sampler, num_repeat: int):
-        self.base_sampler = base_sampler
-        self.num_repeat = max(1, int(num_repeat))
-
-    def __len__(self):
-        return len(self.base_sampler) * self.num_repeat
-
-    def __iter__(self):
-        for idx in self.base_sampler:
-            for _ in range(self.num_repeat):
-                yield idx
-
-
 class _BlockRepeatSampler:
     """Group the base sampler into blocks of block_size (N) and repeat each block num_repeat (mu) times:
           [p0..p_{N-1}] x mu, [pN..p_{2N-1}] x mu, ...  (a trailing partial block < N is dropped)
 
     With grad_accum=N the microbatch order becomes i,j,i,j (block repeat), so HF calls
     optimizer.step() every N microbatches and the policy is actually updated between the mu
-    iterations (ratio r != 1 for the PPO/GRPO clip). N=1 equals _RepeatSampler (each index
-    mu times); mu=1 gives one pass in N-chunks = standard grad_accum."""
+    iterations (ratio r != 1 for the PPO/GRPO clip). N=1 repeats each index
+    mu times; mu=1 gives one pass in N-chunks = standard grad_accum."""
     def __init__(self, base_sampler, block_size: int, num_repeat: int):
         self.base_sampler = base_sampler
         self.N = max(1, int(block_size))
@@ -689,29 +621,6 @@ class GDPOTrainer(Trainer):
                 prompt_end_idx = answer_start[0].item()
                 prompt_ids = prompt_ids[:, :prompt_end_idx]
                 prompt_mask = prompt_mask[:, :prompt_end_idx]
-
-        # [TTI-DBG] check that time markers survive in the prompt (rank 0, first N steps)
-        if TTI_DEBUG and self.accelerator.is_main_process and getattr(self, "_tti_dbg_step0", None) is None:
-            self._tti_dbg_step0 = self.state.global_step
-        if (TTI_DEBUG and self.accelerator.is_main_process
-                and self.state.global_step < self._tti_dbg_step0 + TTI_DEBUG_STEPS):
-            _id_range = getattr(_unwrapped.config, "time_token_id_range", None)
-            _n_mark = count_time_markers(prompt_ids[0], _id_range)
-            _tti_dbg(f"⑤ step {self.state.global_step}: prompt_len={prompt_ids.size(1)}, "
-                     f"model.config.time_token_id_range={_id_range}, "
-                     f"#time_markers_in_prompt={_n_mark}")
-            if _id_range is not None and _n_mark == 0:
-                _tti_dbg("WARNING: TTI on (range set) but the prompt contains 0 time markers "
-                         "(markers missing from the data? mismatches the rope ON branch)")
-            try:
-                _vs_id = self.processing_class.convert_tokens_to_ids("<|vision_start|>")
-                _row = prompt_ids[0].tolist()
-                if _vs_id in _row:
-                    _p = _row.index(_vs_id)
-                    _dec = self.processing_class.decode(_row[_p:_p + 40], skip_special_tokens=False)
-                    _tti_dbg(f"   prompt[vision_start:+40]= {_dec!r}")
-            except Exception as _e:
-                _tti_dbg(f"   failed to decode the vision_start slice: {_e}")
 
         # multimodal inputs
         pixel_values_videos = inputs.get("pixel_values_videos", None)
@@ -1183,10 +1092,6 @@ def load_model_and_tokenizer(model_path, model_base, tti_mode="off"):
             else:
                 print("[GDPO] WARNING: tti_mode=on but the <t0>/<tdot> token ids could not be resolved "
                       "-> time_token_id_range not set (config/data stay out of sync)")
-    # [TTI-DBG] final model.config state
-    _tti_dbg(f"① load_model: tti_mode={tti_mode} | "
-             f"model.config.time_token_id_range={getattr(model.config, 'time_token_id_range', None)} | "
-             f"time_marker_token_len={getattr(model.config, 'time_marker_token_len', None)}")
     # Do not call resize_token_embeddings: the base keeps vocab_size=152064 (Qwen padding) to
     # match the SFT adapter's modules_to_save (embed_tokens/lm_head, 152064 rows).
     model = model.to(torch.bfloat16)
@@ -1893,18 +1798,6 @@ def main():
     print(f"[GDPO] tti_mode={tti_mode} → data_args.tti_time_format={tti_time_format}")
     print(f"[GDPO Tier1] video_cache_size={data_args.video_cache_size} "
           f"(mu={num_iterations}, grad_accum={grad_accum}; avoids redundant decoding when mu > 1)")
-    # [TTI-DBG] consistency of config (model.time_token_id_range) and data (tti_time_format):
-    #   special_token <-> id_range set, off <-> id_range None.
-    if TTI_DEBUG and _is_rank0():
-        _mc_range = getattr(model.config, "time_token_id_range", None)
-        _has_range = (_mc_range is not None)
-        _want_markers = (tti_time_format == "special_token")
-        _tti_dbg(f"② main: tti_mode={tti_mode}, tti_time_format={tti_time_format}, "
-                 f"model.config.time_token_id_range={_mc_range}")
-        if _has_range != _want_markers:
-            _tti_dbg(f"WARNING desync: tti_time_format={tti_time_format} but "
-                     f"model.config.time_token_id_range={_mc_range} "
-                     f"(expected ON<->range, OFF<->None); rope branch and markers may not match")
     data_args.image_processor = Qwen2VLImageProcessorFast.from_pretrained(model_base)
     data_args.audio_processor = WhisperFeatureExtractor(
         feature_size=data_args.feature_size,

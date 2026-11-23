@@ -26,7 +26,6 @@
 # (per sample: max MRoPE index + 1 - sequence length).
 # ============================================================================
 
-import os
 import copy
 import json
 import random
@@ -47,8 +46,7 @@ from PIL import Image
 import transformers
 
 
-# [TTI-DBG] throttle counter for the rope entry check (env TTI_DEBUG=1, first N calls)
-_TTI_ROPE_DBG_COUNT = 0
+# Limits how often the 'rope CASE 1 not taken' warning is printed
 _TTI_ROPE_WARN_COUNT = 0
 
 
@@ -194,7 +192,7 @@ def get_rope_index_25(
             _TTI_ROPE_WARN_COUNT += 1
             _why = ("audio tokens present but audio_lengths not passed"
                     if _has_audio_tok else "markers inserted but the branch was not taken")
-            print(f"[TTI-DBG] WARNING: rope CASE 1 not taken: {_why} "
+            print(f"[TiTok] WARNING: rope CASE 1 not taken: {_why} "
                   f"(tti_active={tti_active}, "
                   f"audio_lengths={'None' if audio_lengths is None else 'ok'}, "
                   f"video_grid_thw={'None' if video_grid_thw is None else 'ok'}) "
@@ -204,23 +202,6 @@ def get_rope_index_25(
         # video-only + TTI: no audio tokens, so audio_len=0 per video block.
         if audio_lengths is None:
             audio_lengths = [0] * len(video_grid_thw)
-
-        # [TTI-DBG] check that the tti_active branch is entered and markers are detected (first N calls, rank 0).
-        #   Can be cross-checked against #markers_in_input from the dataset check.
-        global _TTI_ROPE_DBG_COUNT
-        if (os.environ.get("TTI_DEBUG", "0").lower() in ("1", "true", "yes", "on")
-                and os.environ.get("LOCAL_RANK", "0") == "0"
-                and _TTI_ROPE_DBG_COUNT < int(os.environ.get("TTI_DEBUG_SAMPLES", "3"))):
-            _TTI_ROPE_DBG_COUNT += 1
-            _nmark = 0
-            if time_token_id_range is not None:
-                _lo, _hi = time_token_id_range
-                _flat = input_ids if input_ids.dim() == 1 else input_ids.reshape(-1)
-                _nmark = int(((_flat >= _lo) & (_flat <= _hi)).sum().item())
-            print(f"[TTI-DBG] ④ rope get_rope_index_25: tti_active={tti_active} "
-                  f"time_token_id_range={time_token_id_range} "
-                  f"time_marker_token_len={time_marker_token_len} "
-                  f"#time_tokens_in_input={_nmark}", flush=True)
 
         # Interleaved audio/video input
         total_input_ids = input_ids

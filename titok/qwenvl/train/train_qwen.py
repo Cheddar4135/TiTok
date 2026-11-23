@@ -407,41 +407,6 @@ def train(attn_implementation="flash_attention_2"):
             model.cuda()
 
         result = []
-        tt_debug = []  # [TT_DEBUG] accumulated analysis of generated token ids
-
-        def _tt_classify(gen_ids):
-            """Check whether generated ids are real time tokens (151666~151676) or BPE subwords.
-            Real time tokens vanish under decode(skip_special_tokens=True); subwords remain."""
-            import re as _re
-            TIME_LO, TIME_HI = 151666, 151676   # <t0>..<t9>,<tdot> (added_tokens.json)
-            ids = [int(x) for x in gen_ids]
-            n_real = sum(1 for i in ids if TIME_LO <= i <= TIME_HI)
-            toks = tokenizer.convert_ids_to_tokens(ids)
-            dec_keep = tokenizer.decode(ids, skip_special_tokens=False)
-            dec_strip = tokenizer.decode(ids, skip_special_tokens=True)
-            n_markers = len(_re.findall(r"<t\d>|<tdot>", dec_keep))
-            if n_real == 0 and n_markers > 0:
-                verdict = "BPE_SUBWORD"          # <t..> in the text but no real time-token id: subword pieces
-            elif n_real > 0 and n_real >= n_markers:
-                verdict = "REAL_TIME_TOKEN"
-            elif n_real > 0:
-                verdict = "MIXED"
-            else:
-                verdict = "NO_TIME_MARKER"
-            region = [[i, t] for i, t in zip(ids, toks)
-                      if (TIME_LO <= i <= TIME_HI) or (t in ("<", "t", ">", "tdot"))
-                      or (isinstance(t, str) and t.strip("Ġ▁").isdigit())][:24]
-            return {
-                "verdict": verdict,
-                "n_real_timetoken": n_real,
-                "n_markers_in_text": n_markers,
-                "gen_len": len(ids),
-                "decode_skip_true": dec_strip,
-                "decode_skip_false": dec_keep,
-                "region_tokens": region,
-                "raw_ids_head": ids[:40],
-            }
-
         test_data = data_module["train_dataset"]
         loader = DataLoader(
             test_data,
@@ -471,40 +436,21 @@ def train(attn_implementation="flash_attention_2"):
                 inputs = {k: v.to(f"cuda:{torch.cuda.current_device()}") for k, v in inputs.items() if isinstance(v, torch.Tensor)}
                 if _audio_lengths is not None:
                     inputs["audio_lengths"] = _audio_lengths
-                # If debug_interleave_dir is set and debug_interleave_generate is False,
-                # the dataset hook has already dumped the sample, so skip model.generate.
-                _dbg_skip = (
-                    bool(getattr(data_args, "debug_interleave_dir", ""))
-                    and not getattr(data_args, "debug_interleave_generate", False)
-                )
                 for _ in range(data_args.num_sample):
-                    if _dbg_skip:
-                        output_text = "[debug_interleave: generate skipped]"
-                    else:
-                        with torch.no_grad():
-                            # Without an explicit repetition_penalty, the 1.05 from generation_config.json
-                            # also applies to greedy decoding. Time-token outputs reuse the same digit
-                            # tokens, so the penalty distorts the values and suppresses the end (. + EOS),
-                            # over-splitting segments (1.36 -> 2.10 predicted segments per sample).
-                            # Training (rollout and val) uses 1.0; match it here.
-                            outputs = model.generate(
-                                **inputs,
-                                max_new_tokens=1024,
-                                do_sample=data_args.do_sample,
-                                top_p=0.9,
-                                repetition_penalty=1.0)
-                        output_trimmed = outputs[0, len(inputs["input_ids"][0]):]
-                        output_text = tokenizer.decode(output_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False)
-                        if os.environ.get("TT_DEBUG", "0") == "1":
-                            _ti = _tt_classify(output_trimmed.tolist())
-                            _ti["idx"] = len(tt_debug)
-                            tt_debug.append(_ti)
-                            print(f"[TT-DBG] #{_ti['idx']} verdict={_ti['verdict']} "
-                                  f"real={_ti['n_real_timetoken']} markers_in_text={_ti['n_markers_in_text']} "
-                                  f"gen_len={_ti['gen_len']}", flush=True)
-                            print(f"         skip=True : {_ti['decode_skip_true'][:140]!r}", flush=True)
-                            print(f"         skip=False: {_ti['decode_skip_false'][:140]!r}", flush=True)
-                            print(f"         region   : {_ti['region_tokens'][:16]}", flush=True)
+                    with torch.no_grad():
+                        # Without an explicit repetition_penalty, the 1.05 from generation_config.json
+                        # also applies to greedy decoding. Time-token outputs reuse the same digit
+                        # tokens, so the penalty distorts the values and suppresses the end (. + EOS),
+                        # over-splitting segments (1.36 -> 2.10 predicted segments per sample).
+                        # Training (rollout and val) uses 1.0; match it here.
+                        outputs = model.generate(
+                            **inputs,
+                            max_new_tokens=1024,
+                            do_sample=data_args.do_sample,
+                            top_p=0.9,
+                            repetition_penalty=1.0)
+                    output_trimmed = outputs[0, len(inputs["input_ids"][0]):]
+                    output_text = tokenizer.decode(output_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False)
                     if data_args.num_sample == 1:
                         res_i["pred"] = output_text
                     else:
@@ -517,16 +463,6 @@ def train(attn_implementation="flash_attention_2"):
                 result.append(res_i)
         with open(os.path.join(training_args.output_dir, training_args.run_name, f"test_results_rank{pred_rank}.json"), "w") as f:
             json.dump(result, f, indent=2, ensure_ascii=False)
-
-        if os.environ.get("TT_DEBUG", "0") == "1":
-            _dbg_path = os.path.join(training_args.output_dir, training_args.run_name,
-                                     f"time_token_debug_rank{pred_rank}.json")
-            with open(_dbg_path, "w") as f:
-                json.dump(tt_debug, f, indent=2, ensure_ascii=False)
-            from collections import Counter as _Counter
-            _summary = dict(_Counter(d["verdict"] for d in tt_debug))
-            print(f"[TT-DBG] ===== SUMMARY (n={len(tt_debug)}) verdicts: {_summary} =====", flush=True)
-            print(f"[TT-DBG] details saved to: {_dbg_path}", flush=True)
 
         return
 

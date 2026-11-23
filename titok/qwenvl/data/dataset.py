@@ -20,7 +20,6 @@ import copy
 import json
 import random
 import logging
-import re
 import time
 import math
 import itertools
@@ -479,11 +478,6 @@ class LazySupervisedDataset(Dataset):
                 f"sample='{sec_to_from_to_str(15.6, 17.5)}'"
             )
 
-        # TTI debug dump counter (used only with run_test + debug_interleave_dir)
-        self._debug_dump_count = 0
-        # [TTI-DBG] counter for lightweight marker checks enabled with env TTI_DEBUG=1 (first N samples)
-        self._tti_dbg_count = 0
-
         list_data_dict = []
 
         for data in dataset_list:
@@ -852,69 +846,6 @@ class LazySupervisedDataset(Dataset):
             else:
                 reject_position_ids = None
 
-            # -- [TTI-DBG] per-sample marker check (env TTI_DEBUG=1, rank 0, once per question) --
-            #   Decode the time-token markers in input_ids per chunk and print them as seconds.
-            #   Each marker = one run of time tokens (<t..><tdot><t..>) = the time of one video chunk.
-            #   TTI_DEBUG_SAMPLES: number of questions to print (default 3, -1 = all).
-            _tti_lim = int(os.environ.get("TTI_DEBUG_SAMPLES", "3"))
-            # Rank-0 check: the module-level local_rank can be None on the GDPO path,
-            # so use env LOCAL_RANK (same as the rope check).
-            if (os.environ.get("TTI_DEBUG", "0").lower() in ("1", "true", "yes", "on")
-                    and os.environ.get("LOCAL_RANK", "0") == "0"
-                    and (_tti_lim < 0 or self._tti_dbg_count < _tti_lim)):
-                self._tti_dbg_count += 1
-                _ids_list = data_dict["input_ids"][0].tolist()
-                _rng = self.time_token_id_range
-                _secs = []
-                if _rng is not None:
-                    _lo, _hi = _rng        # _hi=<tdot> id, _lo.._hi-1 = <t0>..<t9>
-
-                    def _decode_run(run):
-                        int_d, dec_d, dot = [], [], False
-                        for _x in run:
-                            if _x == _hi:
-                                dot = True
-                            else:
-                                (dec_d if dot else int_d).append(_x - _lo)
-                        if not int_d:
-                            return None
-                        return round(int("".join(map(str, int_d)))
-                                     + (dec_d[0] if dec_d else 0) / 10.0, 1)
-
-                    _run = []
-                    for _x in _ids_list:
-                        if _lo <= _x <= _hi:
-                            _run.append(_x)
-                        elif _run:
-                            _v = _decode_run(_run); _run = []
-                            if _v is not None:
-                                _secs.append(_v)
-                    if _run:
-                        _v = _decode_run(_run)
-                        if _v is not None:
-                            _secs.append(_v)
-                # natural_text has time_token_id_range=None, so the id-based _secs above is always
-                # empty and the WARNING below would fire every time. Count text markers instead
-                # (as the GDPO trainer already does).
-                _n_nat = None
-                if self.tti_time_format == "natural_text":
-                    try:
-                        _pt = self.tokenizer.decode(_ids_list, skip_special_tokens=False)
-                        _nat_secs = re.findall(r"second\{\s*(\d+\.\d)\s*\}", _pt)
-                        _n_nat = len(_nat_secs)
-                        _secs = [float(x) for x in _nat_secs]
-                    except Exception as _e:
-                        _n_nat = -1
-                        print(f"[TTI-DBG] natural marker count failed: {_e}", flush=True)
-                _n_chunks = int(video_grid_thw[0][0]) if video_grid_thw else 0
-                print(f"[TTI-DBG] ③ sample idx={i} fmt={self.tti_time_format} "
-                      f"chunks={_n_chunks} marker_len={self.time_marker_token_len}"
-                      + (f" #natural_markers={_n_nat}" if _n_nat is not None else ""), flush=True)
-                print(f"[TTI-DBG] time markers ({len(_secs)}): {_secs[:30]}", flush=True)
-                if self.tti_time_format != "off" and not _secs:
-                    print("[TTI-DBG] WARNING: TTI is on but input_ids contain 0 time markers "
-                          "(markers missing from the data?)", flush=True)
-
             if "image" not in sources[0] and "video" not in sources[0] and "audio" not in sources[0]:
                 grid_thw_merged = None
                 sources = copy.deepcopy([e["conversations"] for e in sources])
@@ -993,33 +924,6 @@ class LazySupervisedDataset(Dataset):
                 #   time and silently breaks temporal grounding (about half the validation mIoU).
                 #   input_ids are cut to the prompt, but the audio tokens are inside the prompt,
                 #   so audio_lengths stays valid.
-
-                # ---- TTI debug dump ----
-                dbg_dir = getattr(self.data_args, "debug_interleave_dir", "") or ""
-                limit = getattr(self.data_args, "debug_interleave_sample_limit", -1)
-                if dbg_dir and (limit < 0 or self._debug_dump_count < limit):
-                    try:
-                        from . import debug_interleave as _dbg
-                        _dbg.dump_sample(
-                            out_dir=dbg_dir,
-                            sample_idx=i,
-                            sample_tag=sources[0].get("_debug_tag", f"idx{i:03d}"),
-                            input_ids=data_dict["input_ids"],
-                            position_ids=data_dict["position_ids"],
-                            tokenizer=self.tokenizer,
-                            time_token_id_range=self.time_token_id_range,
-                            video_grid_thw=data_dict.get("video_grid_thw"),
-                            second_per_grid_ts=second_per_grid_ts if second_per_grid_ts else None,
-                            audio_lengths=audio_lengths,
-                            merge_size=self.data_args.image_processor.merge_size,
-                            data_args=self.data_args,
-                            source=sources[0],
-                            tti_time_format=self.tti_time_format,
-                            time_marker_token_len=self.time_marker_token_len,
-                        )
-                        self._debug_dump_count += 1
-                    except Exception as _e:
-                        print(f"[debug_interleave] dump failed for idx {i}: {_e}")
 
             return data_dict
         except Exception as e:

@@ -54,13 +54,6 @@ class DataArguments:
     chunk_length: int = field(default=30)
     hop_length: int = field(default=160)
     sampling_rate: int = field(default=16000)
-    # ---- TTI debug mode ----
-    # If non-empty: dump the interleaved structure from dataset.__getitem__
-    debug_interleave_dir: str = field(default="")
-    # If True, also run model.generate (to inspect outputs). Default False: dump only.
-    debug_interleave_generate: bool = field(default=False)
-    # -1 = all samples, >0 = only the first N samples
-    debug_interleave_sample_limit: int = field(default=-1)
     # ---- TTI input-side time marker format ----
     # "off"           : no markers (Qwen2.5-VL baseline behaviour), default
     # "special_token" : <t0><t1><t5><tdot><t6> (5 special tokens, XXX.Y)
