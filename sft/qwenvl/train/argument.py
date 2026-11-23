@@ -61,8 +61,6 @@ class DataArguments:
     # TTI (Time-Token Interleaving) input-side marker mode
     #   "off"           : no markers (Qwen2.5-VL baseline), default
     #   "special_token" : <t0><t0><t1><tdot><t5> (5 special tokens / chunk, XXX.Y)
-    #   "natural_text"  : "second{XXXX.Y}" (9 text tokens / chunk)
-    #   "from_to"       : "From <t*>x5 to <t*>x5" (14 tokens; same format as the output)
     # The output (GT/labels) format is always special_token. This option only changes
     # the input-side markers inserted between video/audio chunks.
     tti_time_format: str = field(default="off")

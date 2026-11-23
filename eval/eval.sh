@@ -167,8 +167,8 @@ MASTER_PORT="${MASTER_PORT:-$((12900 + FIRST_GPU))}"
 # ---- EVAL_TAG = fps<N>_<format> ----
 FPS_INT=$(awk -v b="${BASE_INTERVAL:-0.2}" 'BEGIN { printf "%d", (1.0/b)+0.5 }')
 case "${TTI_TIME_FORMAT:-off}" in
-    off) FORMAT_TAG=off ;; natural_text) FORMAT_TAG=natural ;;
-    special_token) FORMAT_TAG=tti ;; from_to) FORMAT_TAG=fromto ;;
+    off) FORMAT_TAG=off ;;
+    special_token) FORMAT_TAG=tti ;;
     *) FORMAT_TAG="${TTI_TIME_FORMAT:-off}" ;;
 esac
 EVAL_TAG="fps${FPS_INT}_${FORMAT_TAG}"

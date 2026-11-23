@@ -1639,7 +1639,8 @@ class video_SALMONN2_plus(Qwen2_5_VLPreTrainedModel, GenerationMixin):
         spatial_merge_size and (optionally) time_token_id_range / time_marker_token_len
         are taken from the model config. TTI is active when:
           - special_token: config.time_token_id_range = [lo, hi], time_marker_token_len = 5
-          - natural_text : config.time_token_id_range = None, time_marker_token_len = 8
+          - marker length only: config.time_token_id_range = None, time_marker_token_len = 5
+            (e.g. merged checkpoints at inference); markers are located by position
           - off          : both unset / None
 
         Note: rope2d.get_rope_index_25 hardcodes the image/video/audio/vision_start token ids

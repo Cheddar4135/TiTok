@@ -240,7 +240,7 @@ def train(attn_implementation="flash_attention_2"):
         # TTI input-side marker mode → record in model.config for inference reuse
         model.config.tti_time_format = data_args.tti_time_format
         model.config.time_marker_token_len = {
-            "off": None, "special_token": 5, "natural_text": 9, "from_to": 14,
+            "off": None, "special_token": 5,
         }[data_args.tti_time_format]
 
         if training_args.gradient_checkpointing:
@@ -461,7 +461,7 @@ def train(attn_implementation="flash_attention_2"):
         # TTI input-side marker mode → record in model.config for inference reuse
         model.config.tti_time_format = data_args.tti_time_format
         model.config.time_marker_token_len = {
-            "off": None, "special_token": 5, "natural_text": 9, "from_to": 14,
+            "off": None, "special_token": 5,
         }[data_args.tti_time_format]
 
 

@@ -145,7 +145,9 @@ def get_rope_index_25(
     # Whether TTI (time-marker interleaving) is active. Decided from the marker arguments only,
     # independent of audio (used by the CASE 1 gate below), so video-only + TTI also takes the marker path.
     # - special_token: time_token_id_range=(lo,hi), time_marker_token_len=5
-    # - natural_text : time_token_id_range=None,    time_marker_token_len=8
+    # - length only  : time_token_id_range=None,    time_marker_token_len=5
+    #                  (markers located by position; used when the config has no id range,
+    #                   e.g. merged checkpoints at inference)
     # - TTI off      : both None
     # Active if either is set. A range without a length (legacy callers) defaults to
     # length 5 for backward compatibility.
@@ -228,7 +230,7 @@ def get_rope_index_25(
 
             # Find every vision_start token; the next token tells image / video / audio apart.
             # TTI special_token: the token after vision_start is <t*> instead of video_pad
-            # TTI natural_text : the token after vision_start is plain text ('second' ...)
+            # Without an id range, any vision_start that is not image/audio starts a video block.
             vision_start_indices = torch.argwhere(
                 input_ids == vision_start_token_id
             ).squeeze(1)
@@ -242,7 +244,7 @@ def get_rope_index_25(
                         | ((vision_tokens >= _lo) & (vision_tokens <= _hi))
                     ).sum()
                 else:
-                    # natural_text: a vision_start that is neither image nor audio starts a video block
+                    # no id range: a vision_start that is neither image nor audio starts a video block
                     video_nums = (
                         (vision_tokens != image_token_id)
                         & (vision_tokens != audio_token_id)
@@ -288,7 +290,7 @@ def get_rope_index_25(
                         if first_time.numel() > 0:
                             ed = st + first_time[0].item()
                     else:
-                        # natural_text: markers have a fixed length, so N tokens before the first video_pad
+                        # no id range: markers have a fixed length, so N tokens before the first video_pad
                         ed = ed_video - time_marker_token_len
 
                 # Grid seen by the LLM: H and W are reduced by spatial_merge_size.
@@ -351,9 +353,9 @@ def get_rope_index_25(
                     # All marker tokens of chunk k share one 3D position:
                     #   t = w = k * second_per_grid_t * 2  (same as the first frame of the chunk)
                     #   h = 0
-                    # Token ids (special_token) or text content (natural_text) already order the
+                    # The token ids already order the
                     # tokens inside a marker, so RoPE does not separate them.
-                    M = time_marker_token_len  # special_token=5, natural_text=9
+                    M = time_marker_token_len  # 5 for special_token
                     chunk_t_base = (
                         torch.arange(llm_grid_t) * second_per_grid_t * 2
                     ).long()                                           # (T,)
@@ -381,7 +383,7 @@ def get_rope_index_25(
                         lo, hi = time_token_id_range
                         is_time = (block_ids >= lo) & (block_ids <= hi)
                     else:
-                        # natural_text: tokens in the block that are neither video nor audio are markers
+                        # no id range: tokens in the block that are neither video nor audio are markers
                         is_time = ~(is_video | is_audio)
                     audio_visual_pos[:, is_audio] = audio_pos
                     audio_visual_pos[:, is_video] = video_pos

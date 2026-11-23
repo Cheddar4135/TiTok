@@ -57,8 +57,6 @@ class DataArguments:
     # ---- TTI input-side time marker format ----
     # "off"           : no markers (Qwen2.5-VL baseline behaviour), default
     # "special_token" : <t0><t1><t5><tdot><t6> (5 special tokens, XXX.Y)
-    # "natural_text"  : "second{015.6}" (8 plain-text tokens, zero-padded XXX.Y)
-    # "from_to"       : "From <t*>x5 to <t*>x5" (14 tokens; same format as the output)
     # The output (GT/labels) format is always special_token. This option only changes
     # the input-side markers inserted between video/audio chunks.
     tti_time_format: str = field(default="off")

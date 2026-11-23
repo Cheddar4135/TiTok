@@ -110,7 +110,7 @@ def get_rope_index_25(
     ):
         # TTI (Time-Token Interleaving) active mode detection.
         # - special_token: time_token_id_range=(lo,hi), time_marker_token_len=5
-        # - natural_text : time_token_id_range=None,    time_marker_token_len=9
+        # - length only  : time_token_id_range=None,    time_marker_token_len=5
         # - off          : both None
         tti_active = (
             (time_marker_token_len is not None and time_marker_token_len > 0)
@@ -148,7 +148,7 @@ def get_rope_index_25(
                         | ((vision_tokens >= _lo) & (vision_tokens <= _hi))
                     ).sum()
                 else:
-                    # natural_text: a vision_start that is not image/audio starts a video block
+                    # no id range: a vision_start that is not image/audio starts a video block
                     video_nums = (
                         (vision_tokens != image_token_id)
                         & (vision_tokens != audio_token_id)

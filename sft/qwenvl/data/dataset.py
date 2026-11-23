@@ -67,26 +67,9 @@ def sec_to_time_token_str(sec: float) -> str:
     return f"<t{d1}><t{d2}><t{d3}><tdot><t{f}>"
 
 
-def sec_to_natural_text_str(sec: float) -> str:
-    # Seconds -> 'second{XXXX.Y}'. Always 9 tokens.
-    sec = max(0.0, min(9999.9, sec))
-    return f"second{{{sec:06.1f}}}"
-
-
-def sec_to_from_to_str(sec_start: float, sec_end: float) -> str:
-    # (start, end) -> 'From <t*>x5 to <t*>x5' (same format as the output). 14 tokens.
-    return f"From {sec_to_time_token_str(sec_start)} to {sec_to_time_token_str(sec_end)}"
-
-
-def make_time_marker_string(sec_start: float, tti_time_format: str,
-                            sec_end: float = None) -> str:
-    # Build the input-side time-marker string for tti_time_format. The output (GT) is unaffected.
-    if tti_time_format == "natural_text":
-        return sec_to_natural_text_str(sec_start)
-    if tti_time_format == "from_to":
-        if sec_end is None:
-            raise ValueError("from_to mode requires sec_end")
-        return sec_to_from_to_str(sec_start, sec_end)
+def make_time_marker_string(sec_start: float, tti_time_format: str) -> str:
+    # Input-side time marker inserted before each video chunk (special_token mode).
+    # The output (GT) format is unaffected.
     return sec_to_time_token_str(sec_start)
 
 
@@ -94,8 +77,6 @@ def make_time_marker_string(sec_start: float, tti_time_format: str,
 _TIME_MARKER_TOKEN_LEN = {
     "off": 0,
     "special_token": 5,
-    "natural_text": 9,
-    "from_to": 14,
 }
 
 
@@ -235,10 +216,7 @@ def generate_id_target(
                         for timestep in range(grid_thw_video[i][0]):
                             if sec_per_grid_t is not None and tti_time_format != "off":
                                 t_start_sec = timestep * sec_per_grid_t
-                                t_end_sec = (timestep + 1) * sec_per_grid_t - 0.1
-                                replacement += make_time_marker_string(
-                                    t_start_sec, tti_time_format, sec_end=t_end_sec
-                                )
+                                replacement += make_time_marker_string(t_start_sec, tti_time_format)
                             replacement += (
                                 f"<|video_pad|>"
                                 * (grid_thw_video[i][1] * grid_thw_video[i][2] // merge_size**2)
@@ -419,7 +397,7 @@ class LazySupervisedDataset(Dataset):
         self.tti_time_format = getattr(data_args, "tti_time_format", "off")
         self.tti_marker_token_len = _TIME_MARKER_TOKEN_LEN.get(self.tti_time_format, 0) or None
         self.tti_time_token_id_range = None
-        if self.tti_time_format in ("special_token", "from_to"):
+        if self.tti_time_format == "special_token":
             try:
                 t0 = tokenizer.convert_tokens_to_ids("<t0>")
                 t9 = tokenizer.convert_tokens_to_ids("<t9>")

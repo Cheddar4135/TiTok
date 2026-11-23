@@ -75,43 +75,18 @@ def sec_to_time_token_str(sec: float) -> str:
     return f"<t{d1}><t{d2}><t{d3}><tdot><t{f}>"
 
 
-def sec_to_natural_text_str(sec: float) -> str:
-    # Seconds -> 'second{XXX.Y}': zero-padded 3-digit integer + '.Y' = always 8 tokens
-    # (Qwen2.5 BPE: ['second','{','D','D','D','.','D','}']).
-    # Range 0.0~999.9 s, precision 0.1 s (same digits as special_token).
-    sec = max(0.0, min(999.9, sec))
-    return f"second{{{sec:05.1f}}}"
-
-
-def sec_to_from_to_str(sec_start: float, sec_end: float) -> str:
-    # (start, end) -> 'From <t*>x5 to <t*>x5' (same format as the output). Always 14 tokens.
-    # Qwen2.5 BPE: ['From',' ',<t>×6,' ','to',' ',<t>×6] = 16
-    return f"From {sec_to_time_token_str(sec_start)} to {sec_to_time_token_str(sec_end)}"
-
-
-def make_time_marker_string(sec_start: float, tti_time_format: str,
-                            sec_end: float = None) -> str:
-    # Build the input-side time-marker string for tti_time_format. The output (GT) is unaffected.
-    # from_to also needs sec_end; callers pass (k+1)*sec_per_grid_t - 0.1.
-    if tti_time_format == "natural_text":
-        return sec_to_natural_text_str(sec_start)
-    if tti_time_format == "from_to":
-        if sec_end is None:
-            raise ValueError("from_to mode requires sec_end")
-        return sec_to_from_to_str(sec_start, sec_end)
+def make_time_marker_string(sec_start: float, tti_time_format: str) -> str:
+    # Input-side time marker inserted before each video chunk (special_token mode).
+    # The output (GT) format is unaffected.
     return sec_to_time_token_str(sec_start)
 
 
 # Marker tokens per chunk for each mode.
 #   off            : no markers (Qwen2.5-VL baseline), length 0
 #   special_token  : <t0>..<tdot>..<t*> = 5 (XXX.Y)
-#   natural_text   : 'second{XXX.Y}' = 8
-#   from_to        : 'From <t*>x5 to <t*>x5' = 14 (same format as the output)
 _TIME_MARKER_TOKEN_LEN = {
     "off": 0,
     "special_token": 5,
-    "natural_text": 8,
-    "from_to": 14,
 }
 
 def rank0_print(*args):
@@ -235,11 +210,7 @@ def generate_id_target(
                             sec_per_grid_t = second_per_grid_ts[i][0]
                             for timestep in range(grid_thw_video[i][0]):
                                 t_start_sec = timestep * sec_per_grid_t
-                                # from_to end time = next chunk start - 0.1 s (same as the audio branch)
-                                t_end_sec = (timestep + 1) * sec_per_grid_t - 0.1
-                                replacement += make_time_marker_string(
-                                    t_start_sec, tti_time_format, sec_end=t_end_sec
-                                )
+                                replacement += make_time_marker_string(t_start_sec, tti_time_format)
                                 replacement += (
                                     f"<|video_pad|>"
                                     * (grid_thw_video[i][1] * grid_thw_video[i][2] // merge_size**2)
@@ -265,12 +236,7 @@ def generate_id_target(
                         for timestep in range(grid_thw_video[i][0]):
                             if sec_per_grid_t is not None and tti_time_format != "off":
                                 t_start_sec = timestep * sec_per_grid_t
-                                # from_to markers also need an end time: "next chunk start - 0.1 s"
-                                # (equal-length chunks). The last chunk uses the same formula: t_T - 0.1.
-                                t_end_sec = (timestep + 1) * sec_per_grid_t - 0.1
-                                replacement += make_time_marker_string(
-                                    t_start_sec, tti_time_format, sec_end=t_end_sec
-                                )
+                                replacement += make_time_marker_string(t_start_sec, tti_time_format)
                             replacement += (
                                 f"<|video_pad|>"
                                 * (grid_thw_video[i][1] * grid_thw_video[i][2] // merge_size**2)
@@ -435,48 +401,7 @@ class LazySupervisedDataset(Dataset):
                 f"[TTI/special_token] marker_token_len={self.time_marker_token_len}, "
                 f"id_range={self.time_token_id_range}"
             )
-        elif self.tti_time_format == "natural_text":
-            # natural_text: rope2d identifies markers with the ~(is_video|is_audio) mask.
-            self.time_marker_token_len = _TIME_MARKER_TOKEN_LEN[self.tti_time_format]
-            self.time_token_id_range = None
-            # Length invariance check: 'second{XXX.Y}' must always have the expected length.
-            sample_lens = set()
-            for s in [0.0, 9.9, 99.9, 999.9, 9999.9, 1234.5]:
-                ids = tokenizer.encode(sec_to_natural_text_str(s), add_special_tokens=False)
-                sample_lens.add(len(ids))
-            assert sample_lens == {self.time_marker_token_len}, (
-                f"natural_text marker length not invariant: got {sample_lens}, "
-                f"expected {{{self.time_marker_token_len}}}. "
-                f"Tokenizer may have changed; review sec_to_natural_text_str()."
-            )
-            rank0_print(
-                f"[TTI/natural_text] marker_token_len={self.time_marker_token_len}, "
-                f"sample='{sec_to_natural_text_str(15.6)}'"
-            )
-        else:
-            # from_to: 'From <t*>x5 to <t*>x5', fixed length, same format as the output.
-            # rope2d uses the ~(is_video|is_audio) mask, as for natural_text
-            # (special tokens mixed with plain text).
-            assert self.tti_time_format == "from_to", (
-                f"unsupported tti_time_format: {self.tti_time_format}"
-            )
-            self.time_marker_token_len = _TIME_MARKER_TOKEN_LEN[self.tti_time_format]
-            self.time_token_id_range = None
-            # Length invariance check over several (start, end) pairs.
-            sample_lens = set()
-            for s, e in [(0.0, 0.1), (0.0, 1.9), (9.9, 10.0), (99.9, 1000.0),
-                         (1000.0, 9999.9), (1234.5, 5678.9)]:
-                ids = tokenizer.encode(sec_to_from_to_str(s, e), add_special_tokens=False)
-                sample_lens.add(len(ids))
-            assert sample_lens == {self.time_marker_token_len}, (
-                f"from_to marker length not invariant: got {sample_lens}, "
-                f"expected {{{self.time_marker_token_len}}}. "
-                f"Tokenizer may have changed; review sec_to_from_to_str()."
-            )
-            rank0_print(
-                f"[TTI/from_to] marker_token_len={self.time_marker_token_len}, "
-                f"sample='{sec_to_from_to_str(15.6, 17.5)}'"
-            )
+
 
         list_data_dict = []
 

@@ -416,10 +416,8 @@ class Qwen2_5_VLConfig(PretrainedConfig):
         self.attention_dropout = attention_dropout
         self.rope_scaling = rope_scaling
         self.audio_token_id = audio_token_id
-        # TTI input-side marker mode. "off" (no markers, default) /
-        # "special_token" (5 tokens <tD><tD><tD><tdot><tD>) /
-        # "natural_text" (8 tokens 'second{XXX.Y}') /
-        # "from_to" (14 tokens 'From <t*>x5 to <t*>x5'). The output is always special_token.
+        # TTI input-side marker mode: "off" (no markers, default) or
+        # "special_token" (5 tokens <tD><tD><tD><tdot><tD> before each video chunk).
         self.tti_time_format = tti_time_format
         # Marker tokens per chunk (see _TIME_MARKER_TOKEN_LEN in qwenvl/data/dataset.py).
         self.time_marker_token_len = time_marker_token_len
