@@ -1,0 +1,85 @@
+# ============================================================
+# TiTok GDPO stage (paper setting).
+#   Launcher: gdpo/scripts/train_gdpo.sh
+#   ${VAR} values are expanded from the environment (set by scripts/env.sh);
+#   command-line flags passed by the launcher take precedence over this file.
+#   Effective batch = grad_accum (4) x GPUs (1) = 4  ->  max_steps 5179 = 1 epoch.
+# ============================================================
+
+model:
+  model_path: ${CKPT_DIR}/base/salmonn2p_7b_unav_v8
+  model_base: ${CKPT_DIR}/base/salmonn2p_7b_unav_v8
+  tti_mode: "on"
+
+data:
+  dataset_path: ${DATA_DIR}/gdpo/train.json
+
+lora:
+  enabled: true
+  r: 32
+  lora_alpha: 64
+  lora_dropout: 0.05
+  train_embeddings: false
+  train_lm_head: false                 # lm_head frozen
+  target_modules:                      # full-block LoRA (attention + MLP)
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+
+gdpo:
+  num_generations: 8
+  max_completion_length: 256
+  beta: 0.00
+  temperature: 1.0
+  reward_weights: [1.0, 1.0, 1.0, 1.0, 1.0]   # [format, count, global, local, precision]
+  multi_seg_weight: 1.0                 # no multi-segment advantage scaling
+
+clip:
+  enabled: true
+  epsilon: 0.2
+  epsilon_high: 0.28
+  num_iterations: 2            # μ=2 (clip-higher)
+
+training:
+  output_dir: ${CKPT_DIR}/gdpo/titok_gdpo
+  num_train_epochs: 1
+  max_steps: 5179              # full 1 epoch (= 10358 unique prompts @ eff batch 4, μ=2)
+  per_device_train_batch_size: 1
+  gradient_accumulation_steps: 4       # effective batch = grad_accum (4) x GPUs (1) = 4
+  learning_rate: 1.0e-5
+  warmup_ratio: 0.05
+  lr_scheduler_type: constant_with_warmup
+  bf16: true
+  seed: 2024
+  gradient_checkpointing: true
+  gradient_checkpointing_kwargs:
+    use_reentrant: false
+
+logging:
+  logging_steps: 1
+  save_steps: 200
+  save_total_limit: 30                 # keep every checkpoint of the full run
+  report_to: wandb
+  run_name: null
+
+reward:
+  module: rewards                      # gdpo/rewards.py: format, count, global, local, precision
+
+ref_model:
+  enabled: true
+
+val:
+  enabled: true
+  name: unav
+  dataset_path: ${DATA_DIR}/gdpo/val_unav100.json
+  extra:                                    # additional val sets, logged per set and averaged
+    - name: charades
+      dataset_path: ${DATA_DIR}/gdpo/val_charades.json   # Charades-STA has no audio track (use_audio=false)
+  max_new_tokens: 256
+  max_time: 999.9
+  # Top-level combined/seg_miou/f1_avg in val_metrics.jsonl = mean over (unav, charades).
+  # Per-set values: sets.{unav,charades} and W&B val_unav/*, val_charades/*.
