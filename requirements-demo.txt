@@ -1,0 +1,5 @@
+# Gradio demo (demo/app.py)
+gradio
+matplotlib==3.10.9
+imageio-ffmpeg==0.6.0
+yt-dlp
