@@ -53,7 +53,7 @@ import os
 import re
 import sys
 from collections import defaultdict
-from typing import Any, Callable, List, Dict, Optional, Union
+from typing import Callable, Optional, Union
 
 import yaml
 import torch
@@ -62,7 +62,6 @@ from packaging import version
 import transformers
 from transformers import (
     AutoTokenizer,
-    AutoConfig,
     GenerationConfig,
     PreTrainedModel,
     Trainer,

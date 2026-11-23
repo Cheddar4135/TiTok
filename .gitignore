@@ -17,6 +17,7 @@ dist/
 .eggs/
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
 .ipynb_checkpoints/
 
 # ---- Environments ----
