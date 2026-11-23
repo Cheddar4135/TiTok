@@ -1,0 +1,5706 @@
+[
+ {
+  "completion": "From <t1><t1><t5><tdot><t4> to <t1><t4><t5><tdot><t8>.",
+  "gt": [
+   [
+    113.8,
+    146.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9712454757732065,
+   "local": 0.9720496894409938,
+   "precision": 1.0
+  }
+ },
+ {
+  "completion": "Answer: From <t1><t1><t8><tdot><t2> to <t1><t1><t8><tdot><t3>.",
+  "gt": [
+   [
+    5.7,
+    39.2
+   ],
+   [
+    86.6,
+    117.2
+   ],
+   [
+    0.4,
+    18.5
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.16140904311251314,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t9><t3><tdot><t8> to <t2><t2><t3><tdot><t0>.",
+  "gt": [
+   [
+    129.9,
+    130.8
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.16165413533834583,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t6><t7><tdot><t5> to <t1><t9><t0><tdot><t0>. From <t0><t2><t0><tdot><t0> to <t0><t4><t5><tdot><t4>.",
+  "gt": [
+   [
+    187.8,
+    210.1
+   ],
+   [
+    69.1,
+    96.3
+   ],
+   [
+    152.2,
+    190.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.6666666666666667,
+   "global": 0.36457518329709543,
+   "local": 0.37998919859788166,
+   "precision": 0.4697286012526096
+  }
+ },
+ {
+  "completion": "From <t1><t8><t7><tdot><t3> to <t2><t0><t4><tdot><t5>. From <t0><t3><t8><tdot><t0> to <t0><t3><t8><tdot><t1>. From <t1><t6><t9><tdot><t2> to <t1><t8><t9><tdot><t7>.",
+  "gt": [
+   [
+    148.6,
+    184.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.33333333333333337,
+   "global": 0.42917199850560594,
+   "local": 0.15831842576028618,
+   "precision": 0.43220338983050866
+  }
+ },
+ {
+  "completion": "From <t0><t1><t7><tdot><t3> to <t0><t1><t4><tdot><t3>.",
+  "gt": [
+   [
+    48.5,
+    80.5
+   ],
+   [
+    82.9,
+    90.2
+   ],
+   [
+    109.8,
+    138.1
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t3><t3><tdot><t7> to <t0><t3><t0><tdot><t7>.",
+  "gt": [
+   [
+    74.1,
+    103.5
+   ],
+   [
+    93.9,
+    106.6
+   ],
+   [
+    169.7,
+    194.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t9><t1><tdot><t8> to <t1><t0><t3><tdot><t0>.",
+  "gt": [
+   [
+    80.9,
+    95.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.25296391345063446,
+   "local": 0.572398190045249,
+   "precision": 0.2857142857142859
+  }
+ },
+ {
+  "completion": "From <t1><t6><t1><tdot><t8> to <t1><t8><t2><tdot><t8>. From <t0><t4><t1><tdot><t1> to <t0><t4><t1><tdot><t2>. From <t1><t7><t4><tdot><t0> to <t1><t7><t1><tdot><t0>.",
+  "gt": [
+   [
+    76.7,
+    111.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.5,
+   "global": 0.0,
+   "local": 0.13030160226201695,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t9><t5><tdot><t4> to <t1><t0><t9><tdot><t7>. From <t0><t7><t1><tdot><t4> to <t0><t9><t2><tdot><t8>. From <t1><t2><t6><tdot><t6> to <t1><t4><t7><tdot><t9>.",
+  "gt": [
+   [
+    97.0,
+    111.6
+   ],
+   [
+    69.2,
+    91.0
+   ],
+   [
+    124.7,
+    149.4
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9077048196933982,
+   "local": 0.9128012116663125,
+   "precision": 0.9403508771929826
+  }
+ },
+ {
+  "completion": "From <t0><t4><t9><tdot><t9> to <t0><t5><t4><tdot><t7>.",
+  "gt": [
+   [
+    173.6,
+    192.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.08163265306122458,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t1><t3><tdot><t6> to <t0><t1><t9><tdot><t6>. From <t1><t0><t2><tdot><t6> to <t1><t1><t1><tdot><t9>.",
+  "gt": [
+   [
+    13.9,
+    20.7
+   ],
+   [
+    105.5,
+    112.6
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.8287665676724756,
+   "local": 0.8607042253521129,
+   "precision": 0.7908496732026141
+  }
+ },
+ {
+  "completion": "From <t0><t8><t6><tdot><t3> to <t0><t8><t3><tdot><t3>. From <t0><t0><t3><tdot><t6> to <t0><t0><t9><tdot><t9>. From <t1><t9><t2><tdot><t0> to <t2><t1><t0><tdot><t1>.",
+  "gt": [
+   [
+    50.7,
+    80.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.5,
+   "global": 0.0,
+   "local": 0.11649214659685861,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t4><t4><tdot><t6> to <t0><t4><t4><tdot><t7>. From <t1><t3><t5><tdot><t0> to <t1><t6><t7><tdot><t2>.",
+  "gt": [
+   [
+    195.4,
+    220.8
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.5,
+   "global": 0.0,
+   "local": 0.03618047673098751,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t4><t4><tdot><t9> to <t1><t5><t0><tdot><t5>.",
+  "gt": [
+   [
+    147.5,
+    153.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.5405399431869099,
+   "local": 0.6851851851851853,
+   "precision": 0.5357142857142863
+  }
+ },
+ {
+  "completion": "Answer: ",
+  "gt": [
+   [
+    83.2,
+    93.7
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    192.4,
+    215.4
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t7><t5><tdot><t2> to <t0><t8><t8><tdot><t0>. From <t0><t7><t6><tdot><t2> to <t0><t9><t3><tdot><t0>.",
+  "gt": [
+   [
+    75.6,
+    89.8
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.5,
+   "global": 0.8874994508596524,
+   "local": 0.46232876712328785,
+   "precision": 0.7977528089887643
+  }
+ },
+ {
+  "completion": "Answer: From <t1><t0><t2><tdot><t9> to <t1><t0><t3><tdot><t9>. From <t1><t2><t0><tdot><t2> to <t1><t3><t8><tdot><t4>.",
+  "gt": [
+   [
+    100.8,
+    102.0
+   ],
+   [
+    122.4,
+    138.8
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 1.0,
+   "global": 0.8695646710777934,
+   "local": 0.6424731182795695,
+   "precision": 0.8333333333333333
+  }
+ },
+ {
+  "completion": "From <t1><t8><t3><tdot><t9> to <t1><t9><t8><tdot><t5>. From <t0><t9><t8><tdot><t5> to <t1><t3><t6><tdot><t9>.",
+  "gt": [
+   [
+    186.4,
+    200.5
+   ],
+   [
+    176.5,
+    204.1
+   ],
+   [
+    96.9,
+    136.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.6666666666666667,
+   "global": 0.9619681876972654,
+   "local": 0.6123192771084338,
+   "precision": 0.988679245283019
+  }
+ },
+ {
+  "completion": "From <t0><t2><t7><tdot><t1> to <t0><t2><t4><tdot><t1>. From <t0><t6><t4><tdot><t1> to <t0><t6><t4><tdot><t2>.",
+  "gt": [
+   [
+    22.8,
+    32.6
+   ],
+   [
+    188.8,
+    220.1
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.05978260869565222,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t1><t5><tdot><t3> to <t0><t3><t7><tdot><t6>. From <t0><t1><t6><tdot><t3> to <t0><t1><t6><tdot><t4>.",
+  "gt": [
+   [
+    165.7,
+    179.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.5,
+   "global": 0.0,
+   "local": 0.055200729927007336,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t0><t2><tdot><t5> to <t0><t0><t0><tdot><t0>.",
+  "gt": [
+   [
+    91.6,
+    103.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t2><t3><tdot><t1> to <t0><t2><t0><tdot><t1>.",
+  "gt": [
+   [
+    37.6,
+    69.1
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t8><t1><tdot><t8> to <t1><t8><t1><tdot><t9>. From <t1><t4><t2><tdot><t3> to <t1><t3><t9><tdot><t3>. From <t1><t3><t0><tdot><t4> to <t1><t2><t7><tdot><t4>.",
+  "gt": [
+   [
+    87.0,
+    125.6
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.2038988408851422,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t4><t5><tdot><t9> to <t1><t5><t8><tdot><t1>. From <t0><t8><t0><tdot><t0> to <t0><t9><t6><tdot><t2>.",
+  "gt": [
+   [
+    145.3,
+    158.4
+   ],
+   [
+    78.3,
+    94.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9254760711625908,
+   "local": 0.9353383939613628,
+   "precision": 0.9401408450704224
+  }
+ },
+ {
+  "completion": "From <t1><t0><t9><tdot><t2> to <t1><t2><t1><tdot><t8>.",
+  "gt": [
+   [
+    132.4,
+    143.1
+   ],
+   [
+    108.3,
+    120.9
+   ],
+   [
+    49.3,
+    53.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.5909086271812136,
+   "local": 0.31111111111111117,
+   "precision": 0.9285714285714293
+  }
+ },
+ {
+  "completion": "From <t0><t3><t8><tdot><t1> to <t0><t7><t1><tdot><t0>. From <t1><t1><t4><tdot><t1> to <t1><t5><t4><tdot><t5>.",
+  "gt": [
+   [
+    37.4,
+    69.2
+   ],
+   [
+    115.8,
+    152.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9577459659088107,
+   "local": 0.9597403936822253,
+   "precision": 0.9276944065484309
+  }
+ },
+ {
+  "completion": "From <t1><t4><t5><tdot><t0> to <t1><t4><t6><tdot><t9>.",
+  "gt": [
+   [
+    145.8,
+    147.1
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.6874990878912091,
+   "local": 0.7619047619047612,
+   "precision": 0.5789473684210479
+  }
+ },
+ {
+  "completion": "From <t0><t6><t1><tdot><t1> to <t0><t8><t9><tdot><t6>.",
+  "gt": [
+   [
+    15.4,
+    53.4
+   ],
+   [
+    34.6,
+    65.8
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0962124814245462,
+   "local": 0.27136363636363636,
+   "precision": 0.1649122807017543
+  }
+ },
+ {
+  "completion": "From <t0><t3><t0><tdot><t7> to <t0><t6><t6><tdot><t6>.",
+  "gt": [
+   [
+    28.3,
+    64.8
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9419884242890546,
+   "local": 0.9451697127937336,
+   "precision": 0.9498607242339834
+  }
+ },
+ {
+  "completion": "From <t0><t3><t6><tdot><t6> to <t0><t5><t1><tdot><t7>. From <t0><t3><t7><tdot><t6> to <t0><t5><t6><tdot><t7>.",
+  "gt": [
+   [
+    35.6,
+    53.2
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.5,
+   "global": 0.880636060255404,
+   "local": 0.46448863636363635,
+   "precision": 0.8258706467661692
+  }
+ },
+ {
+  "completion": "From <t1><t1><t0><tdot><t8> to <t1><t3><t1><tdot><t3>. From <t1><t6><t7><tdot><t7> to <t1><t8><t7><tdot><t8>. From <t0><t7><t6><tdot><t9> to <t0><t9><t1><tdot><t6>.",
+  "gt": [
+   [
+    109.9,
+    131.8
+   ],
+   [
+    170.3,
+    188.7
+   ],
+   [
+    79.1,
+    93.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9223739124274519,
+   "local": 0.9243006513703359,
+   "precision": 0.9132007233273054
+  }
+ },
+ {
+  "completion": "From <t0><t4><t7><tdot><t7> to <t0><t4><t7><tdot><t8>.",
+  "gt": [
+   [
+    34.4,
+    38.4
+   ],
+   [
+    97.2,
+    104.7
+   ],
+   [
+    63.4,
+    99.2
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.11618122977346279,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t2><t9><tdot><t1> to <t1><t4><t4><tdot><t1>. From <t1><t5><t3><tdot><t2> to <t1><t5><t3><tdot><t3>. From <t0><t5><t9><tdot><t7> to <t0><t7><t2><tdot><t1>.",
+  "gt": [
+   [
+    67.4,
+    92.0
+   ],
+   [
+    145.6,
+    171.9
+   ],
+   [
+    194.5,
+    203.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.10958860784191465,
+   "local": 0.23374948774021811,
+   "precision": 0.17454545454545486
+  }
+ },
+ {
+  "completion": "Answer: From <t1><t1><t9><tdot><t3> to <t1><t5><t4><tdot><t7>. From <t1><t8><t0><tdot><t4> to <t2><t1><t9><tdot><t0>. From <t1><t1><t4><tdot><t3> to <t1><t1><t9><tdot><t7>.",
+  "gt": [
+   [
+    118.9,
+    153.2
+   ],
+   [
+    179.3,
+    217.7
+   ],
+   [
+    114.2,
+    121.7
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 1.0,
+   "global": 0.9924617991183299,
+   "local": 0.9344123289663164,
+   "precision": 0.9645569620253163
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    161.6,
+    186.9
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    193.8,
+    218.7
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t7><t9><tdot><t4> to <t0><t7><t9><tdot><t5>. From <t0><t2><t5><tdot><t3> to <t0><t2><t2><tdot><t3>.",
+  "gt": [
+   [
+    194.2,
+    209.8
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.06019938650306755,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t0><t4><tdot><t2> to <t0><t2><t9><tdot><t5>. From <t0><t4><t8><tdot><t4> to <t0><t4><t5><tdot><t4>. From <t0><t5><t7><tdot><t0> to <t0><t5><t7><tdot><t1>.",
+  "gt": [
+   [
+    181.9,
+    208.5
+   ],
+   [
+    55.5,
+    71.0
+   ],
+   [
+    111.9,
+    150.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.6666666666666667,
+   "global": 0.001888209518428337,
+   "local": 0.17057096952932294,
+   "precision": 0.0039370078740158035
+  }
+ },
+ {
+  "completion": "From <t1><t6><t6><tdot><t0> to <t1><t8><t2><tdot><t3>. From <t1><t7><t4><tdot><t5> to <t2><t0><t4><tdot><t7>.",
+  "gt": [
+   [
+    166.5,
+    184.6
+   ],
+   [
+    172.2,
+    206.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 1.1108666658443134,
+   "local": 0.9324822094736513,
+   "precision": 0.9870801033591732
+  }
+ },
+ {
+  "completion": "From <t0><t1><t5><tdot><t0> to <t0><t1><t5><tdot><t1>.",
+  "gt": [
+   [
+    23.6,
+    53.6
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.3898963730569948,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t5><t0><tdot><t7> to <t1><t6><t6><tdot><t4>. From <t0><t2><t2><tdot><t5> to <t0><t5><t6><tdot><t2>.",
+  "gt": [
+   [
+    151.7,
+    165.0
+   ],
+   [
+    24.8,
+    53.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9213968628842714,
+   "local": 0.9261751308851045,
+   "precision": 0.854251012145749
+  }
+ },
+ {
+  "completion": "From <t1><t4><t7><tdot><t8> to <t1><t7><t9><tdot><t6>.",
+  "gt": [
+   [
+    127.1,
+    156.1
+   ],
+   [
+    147.7,
+    177.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.8324079598475509,
+   "local": 0.4788401253918494,
+   "precision": 0.918238993710692
+  }
+ },
+ {
+  "completion": "From <t0><t9><t1><tdot><t0> to <t1><t1><t7><tdot><t3>.",
+  "gt": [
+   [
+    89.9,
+    116.8
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9699242756305944,
+   "local": 0.9708029197080292,
+   "precision": 0.9809885931558935
+  }
+ },
+ {
+  "completion": "From <t1><t2><t5><tdot><t9> to <t1><t4><t2><tdot><t5>.",
+  "gt": [
+   [
+    98.5,
+    128.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.11158751938886607,
+   "local": 0.5295454545454544,
+   "precision": 0.15662650602409608
+  }
+ },
+ {
+  "completion": "From <t1><t5><t8><tdot><t7> to <t1><t9><t0><tdot><t7>. From <t1><t5><t5><tdot><t5> to <t1><t8><t6><tdot><t1>. From <t1><t1><t8><tdot><t4> to <t1><t3><t5><tdot><t5>.",
+  "gt": [
+   [
+    156.5,
+    190.4
+   ],
+   [
+    153.5,
+    186.2
+   ],
+   [
+    121.1,
+    135.4
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 1.1846841899480225,
+   "local": 0.9498229518751008,
+   "precision": 0.9407265774378591
+  }
+ },
+ {
+  "completion": "Answer: From <t0><t1><t4><tdot><t2> to <t0><t3><t0><tdot><t1>. From <t0><t3><t3><tdot><t0> to <t0><t5><t9><tdot><t8>.",
+  "gt": [
+   [
+    13.4,
+    31.4
+   ],
+   [
+    32.8,
+    61.4
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 1.0,
+   "global": 0.9563264672176004,
+   "local": 0.9550990675990676,
+   "precision": 1.0
+  }
+ },
+ {
+  "completion": "From <t0><t5><t4><tdot><t0> to <t0><t5><t1><tdot><t0>. From <t0><t7><t8><tdot><t5> to <t0><t7><t8><tdot><t6>. From <t1><t5><t8><tdot><t0> to <t1><t5><t8><tdot><t1>.",
+  "gt": [
+   [
+    93.6,
+    116.1
+   ],
+   [
+    9.9,
+    22.1
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.17101494530105946,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t8><t0><tdot><t5> to <t0><t7><t7><tdot><t5>. From <t1><t5><t7><tdot><t1> to <t1><t6><t5><tdot><t1>. From <t1><t4><t6><tdot><t5> to <t1><t8><t1><tdot><t4>.",
+  "gt": [
+   [
+    192.8,
+    221.2
+   ],
+   [
+    168.8,
+    170.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.05230719342957901,
+   "local": 0.39281753881196396,
+   "precision": 0.048710601719197374
+  }
+ },
+ {
+  "completion": "From <t1><t5><t5><tdot><t7> to <t1><t5><t5><tdot><t8>.",
+  "gt": [
+   [
+    121.3,
+    132.1
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.15797101449275386,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t4><t6><tdot><t2> to <t0><t7><t4><tdot><t3>. From <t1><t4><t6><tdot><t0> to <t1><t5><t4><tdot><t6>. From <t0><t2><t2><tdot><t5> to <t0><t3><t9><tdot><t4>.",
+  "gt": [
+   [
+    48.1,
+    77.0
+   ],
+   [
+    143.7,
+    156.3
+   ],
+   [
+    21.3,
+    37.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.894878190797756,
+   "local": 0.8936530524928313,
+   "precision": 0.9291044776119404
+  }
+ },
+ {
+  "completion": "From <t1><t3><t2><tdot><t3> to <t1><t4><t5><tdot><t4>.",
+  "gt": [
+   [
+    132.6,
+    143.9
+   ],
+   [
+    122.6,
+    129.9
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.7129332240149,
+   "local": 0.4656488549618324,
+   "precision": 0.8625954198473295
+  }
+ },
+ {
+  "completion": "From <t0><t4><t4><tdot><t5> to <t0><t7><t0><tdot><t0>. From <t0><t6><t6><tdot><t5> to <t0><t9><t2><tdot><t4>. From <t1><t8><t4><tdot><t2> to <t2><t2><t3><tdot><t3>. From <t0><t4><t5><tdot><t5> to <t0><t7><t5><tdot><t0>.",
+  "gt": [
+   [
+    42.4,
+    71.1
+   ],
+   [
+    66.0,
+    89.9
+   ],
+   [
+    181.9,
+    221.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.75,
+   "global": 0.981047427085957,
+   "local": 0.7100828099966487,
+   "precision": 0.9528735632183906
+  }
+ },
+ {
+  "completion": "Answer: From <t0><t7><t5><tdot><t9> to <t0><t7><t6><tdot><t0>. From <t1><t3><t0><tdot><t4> to <t1><t2><t7><tdot><t4>. From <t0><t0><t7><tdot><t1> to <t0><t0><t4><tdot><t1>.",
+  "gt": [
+   [
+    77.5,
+    112.6
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.47956403269754766,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t5><t8><tdot><t1> to <t1><t7><t2><tdot><t0>. From <t0><t3><t7><tdot><t0> to <t0><t5><t6><tdot><t8>.",
+  "gt": [
+   [
+    156.2,
+    173.8
+   ],
+   [
+    38.0,
+    58.2
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9146847907440737,
+   "local": 0.9191412950257287,
+   "precision": 0.9703264094955489
+  }
+ },
+ {
+  "completion": "From <t0><t8><t5><tdot><t7> to <t1><t1><t3><tdot><t8>.",
+  "gt": [
+   [
+    12.0,
+    49.4
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.32170923379174854,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "Answer: From <t0><t8><t4><tdot><t8> to <t1><t1><t1><tdot><t5>. From <t0><t5><t3><tdot><t4> to <t0><t5><t0><tdot><t4>. From <t0><t5><t0><tdot><t3> to <t0><t4><t7><tdot><t3>.",
+  "gt": [
+   [
+    181.0,
+    203.1
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.20625528317836012,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t7><t2><tdot><t8> to <t2><t0><t4><tdot><t9>.",
+  "gt": [
+   [
+    170.9,
+    205.1
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9683252631466588,
+   "local": 0.9692982456140351,
+   "precision": 1.0
+  }
+ },
+ {
+  "completion": "From <t1><t5><t2><tdot><t7> to <t1><t5><t2><tdot><t8>. From <t0><t0><t4><tdot><t9> to <t0><t0><t1><tdot><t9>.",
+  "gt": [
+   [
+    25.3,
+    27.1
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.007450980392156914,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t1><t9><tdot><t0> to <t0><t2><t0><tdot><t9>.",
+  "gt": [
+   [
+    17.2,
+    19.1
+   ],
+   [
+    76.8,
+    106.2
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.00602398811699679,
+   "local": 0.25675675675675685,
+   "precision": 0.05263157894736921
+  }
+ },
+ {
+  "completion": "From <t1><t5><t6><tdot><t7> to <t1><t9><t5><tdot><t0>. From <t0><t9><t6><tdot><t2> to <t0><t9><t6><tdot><t3>. From <t1><t0><t4><tdot><t7> to <t1><t2><t7><tdot><t3>.",
+  "gt": [
+   [
+    100.5,
+    109.1
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.33333333333333337,
+   "global": 0.12643656138561024,
+   "local": 0.08271604938271605,
+   "precision": 0.07213114754098347
+  }
+ },
+ {
+  "completion": "From <t1><t7><t8><tdot><t6> to <t2><t1><t2><tdot><t8>. From <t1><t7><t9><tdot><t6> to <t2><t1><t7><tdot><t8>.",
+  "gt": [
+   [
+    179.4,
+    212.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.5,
+   "global": 0.9186201676254767,
+   "local": 0.4934210526315787,
+   "precision": 0.8494897959183666
+  }
+ },
+ {
+  "completion": "From <t0><t8><t3><tdot><t5> to <t0><t8><t3><tdot><t6>.",
+  "gt": [
+   [
+    8.7,
+    41.4
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.21895861148197598,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t5><t6><tdot><t9> to <t1><t5><t7><tdot><t0>.",
+  "gt": [
+   [
+    105.2,
+    111.6
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.06274131274131262,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    90.8,
+    105.7
+   ],
+   [
+    148.3,
+    163.8
+   ],
+   [
+    177.9,
+    181.5
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t8><t0><tdot><t5> to <t0><t8><t0><tdot><t6>.",
+  "gt": [
+   [
+    115.1,
+    154.8
+   ],
+   [
+    156.8,
+    185.1
+   ],
+   [
+    149.3,
+    164.1
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.08927770300583222,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t0><t3><tdot><t5> to <t0><t1><t7><tdot><t8>.",
+  "gt": [
+   [
+    5.8,
+    16.2
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.8421047074368935,
+   "local": 0.8636363636363635,
+   "precision": 0.7272727272727272
+  }
+ },
+ {
+  "completion": "From <t0><t5><t2><tdot><t3> to <t0><t7><t7><tdot><t8>.",
+  "gt": [
+   [
+    195.7,
+    223.1
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.1548594847775176,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t7><t2><tdot><t4> to <t1><t7><t2><tdot><t5>. From <t1><t8><t0><tdot><t0> to <t1><t8><t0><tdot><t1>. From <t0><t4><t4><tdot><t0> to <t0><t4><t4><tdot><t1>.",
+  "gt": [
+   [
+    158.8,
+    167.9
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.33333333333333337,
+   "global": 0.0,
+   "local": 0.11192214111922137,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t5><t9><tdot><t6> to <t1><t5><t9><tdot><t7>.",
+  "gt": [
+   [
+    85.1,
+    112.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.18297587131367293,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t1><t5><tdot><t3> to <t0><t4><t0><tdot><t1>. From <t1><t5><t9><tdot><t2> to <t1><t5><t6><tdot><t2>.",
+  "gt": [
+   [
+    149.4,
+    180.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.16878787878787882,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t9><t4><tdot><t2> to <t2><t1><t6><tdot><t1>.",
+  "gt": [
+   [
+    1.3,
+    39.7
+   ],
+   [
+    139.2,
+    165.1
+   ],
+   [
+    108.2,
+    141.2
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.10359774599046383,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t0><t3><tdot><t9> to <t1><t2><t5><tdot><t8>. From <t1><t6><t4><tdot><t2> to <t2><t0><t2><tdot><t2>.",
+  "gt": [
+   [
+    105.1,
+    127.0
+   ],
+   [
+    163.7,
+    201.9
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9733328171127574,
+   "local": 0.968831168831169,
+   "precision": 0.9749582637729554
+  }
+ },
+ {
+  "completion": "From <t0><t8><t4><tdot><t2> to <t0><t9><t5><tdot><t8>.",
+  "gt": [
+   [
+    198.9,
+    228.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.1427581427581427,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t5><t3><tdot><t8> to <t0><t5><t3><tdot><t9>. From <t1><t2><t7><tdot><t2> to <t1><t2><t7><tdot><t3>.",
+  "gt": [
+   [
+    179.7,
+    216.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.5,
+   "global": 0.0,
+   "local": 0.05693677102516881,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    96.7,
+    102.9
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t7><t3><tdot><t0> to <t1><t9><t6><tdot><t5>. From <t0><t5><t9><tdot><t1> to <t0><t9><t7><tdot><t2>.",
+  "gt": [
+   [
+    171.6,
+    195.4
+   ],
+   [
+    57.4,
+    97.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9656818470571867,
+   "local": 0.9636214029048525,
+   "precision": 0.9821428571428572
+  }
+ },
+ {
+  "completion": "From <t1><t4><t5><tdot><t9> to <t1><t4><t6><tdot><t7>. From <t0><t2><t7><tdot><t9> to <t0><t6><t2><tdot><t1>. From <t0><t4><t8><tdot><t8> to <t0><t4><t7><tdot><t6>.",
+  "gt": [
+   [
+    143.2,
+    147.3
+   ],
+   [
+    25.9,
+    64.6
+   ],
+   [
+    45.8,
+    47.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.6666666666666667,
+   "global": 0.920554338641178,
+   "local": 0.5131404802420109,
+   "precision": 1.0
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    146.9,
+    174.2
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t3><t8><tdot><t0> to <t0><t6><t5><tdot><t8>. From <t1><t4><t1><tdot><t9> to <t1><t4><t3><tdot><t2>.",
+  "gt": [
+   [
+    35.8,
+    68.1
+   ],
+   [
+    140.8,
+    143.2
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9122251805851707,
+   "local": 0.850586945304437,
+   "precision": 1.0
+  }
+ },
+ {
+  "completion": "From <t0><t5><t7><tdot><t7> to <t0><t7><t7><tdot><t7>. From <t1><t8><t2><tdot><t6> to <t2><t1><t4><tdot><t3>. From <t0><t6><t7><tdot><t4> to <t0><t6><t4><tdot><t4>.",
+  "gt": [
+   [
+    21.2,
+    37.0
+   ],
+   [
+    181.1,
+    189.5
+   ],
+   [
+    104.1,
+    121.1
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.6666666666666667,
+   "global": 0.14854632773346282,
+   "local": 0.30690994064754595,
+   "precision": 0.13346228239845268
+  }
+ },
+ {
+  "completion": "From <t1><t8><t7><tdot><t3> to <t2><t2><t2><tdot><t4>. From <t0><t5><t4><tdot><t7> to <t0><t7><t4><tdot><t9>. From <t1><t8><t8><tdot><t3> to <t2><t2><t7><tdot><t4>.",
+  "gt": [
+   [
+    185.2,
+    224.0
+   ],
+   [
+    53.5,
+    75.4
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.6666666666666667,
+   "global": 0.9404953522289388,
+   "local": 0.6378356007469126,
+   "precision": 0.9436152570480928
+  }
+ },
+ {
+  "completion": "From <t1><t0><t5><tdot><t3> to <t1><t3><t2><tdot><t4>.",
+  "gt": [
+   [
+    106.6,
+    131.2
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9516435649355948,
+   "local": 0.9538745387453872,
+   "precision": 0.9077490774907744
+  }
+ },
+ {
+  "completion": "From <t1><t3><t8><tdot><t8> to <t1><t3><t5><tdot><t8>. From <t1><t0><t0><tdot><t8> to <t0><t9><t7><tdot><t8>. From <t1><t2><t9><tdot><t0> to <t1><t2><t6><tdot><t0>.",
+  "gt": [
+   [
+    119.8,
+    129.8
+   ],
+   [
+    35.2,
+    65.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    96.1,
+    101.3
+   ],
+   [
+    177.5,
+    205.6
+   ],
+   [
+    45.0,
+    70.6
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t8><t4><tdot><t5> to <t0><t8><t1><tdot><t5>.",
+  "gt": [
+   [
+    45.2,
+    53.6
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "Answer: From <t0><t5><t3><tdot><t8> to <t0><t5><t3><tdot><t9>.",
+  "gt": [
+   [
+    16.9,
+    26.3
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.1283783783783784,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t1><t5><tdot><t5> to <t0><t1><t2><tdot><t5>.",
+  "gt": [
+   [
+    69.4,
+    74.4
+   ],
+   [
+    179.7,
+    185.9
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t5><t3><tdot><t3> to <t0><t5><t9><tdot><t0>.",
+  "gt": [
+   [
+    53.9,
+    56.4
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.6097555249854214,
+   "local": 0.719298245614035,
+   "precision": 0.43859649122806993
+  }
+ },
+ {
+  "completion": "From <t0><t5><t5><tdot><t5> to <t0><t7><t7><tdot><t7>. From <t0><t6><t6><tdot><t6> to <t1><t0><t1><tdot><t8>.",
+  "gt": [
+   [
+    54.7,
+    75.6
+   ],
+   [
+    64.4,
+    102.4
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 1.0931553799265619,
+   "local": 0.9500572082379862,
+   "precision": 1.0
+  }
+ },
+ {
+  "completion": "From <t1><t1><t1><tdot><t0> to <t1><t3><t2><tdot><t9>. From <t0><t7><t9><tdot><t1> to <t1><t1><t3><tdot><t3>. From <t1><t2><t6><tdot><t7> to <t1><t4><t8><tdot><t5>.",
+  "gt": [
+   [
+    112.9,
+    134.6
+   ],
+   [
+    78.8,
+    114.8
+   ],
+   [
+    126.5,
+    148.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 1.0636297628399012,
+   "local": 0.9632399348501045,
+   "precision": 1.0
+  }
+ },
+ {
+  "completion": "From <t1><t3><t6><tdot><t9> to <t1><t3><t7><tdot><t0>. From <t0><t8><t9><tdot><t1> to <t0><t8><t6><tdot><t1>. From <t1><t8><t2><tdot><t7> to <t1><t7><t9><tdot><t7>.",
+  "gt": [
+   [
+    13.8,
+    52.9
+   ],
+   [
+    72.6,
+    95.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0873447204968944,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t2><t3><tdot><t6> to <t0><t2><t3><tdot><t7>. From <t0><t5><t9><tdot><t1> to <t0><t8><t6><tdot><t7>.",
+  "gt": [
+   [
+    73.0,
+    85.0
+   ],
+   [
+    31.1,
+    63.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.4441335914029275,
+   "local": 0.5617413374531008,
+   "precision": 0.5740072202166064
+  }
+ },
+ {
+  "completion": "From <t0><t7><t5><tdot><t9> to <t0><t7><t2><tdot><t9>.",
+  "gt": [
+   [
+    107.5,
+    108.4
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t2><t0><tdot><t9> to <t1><t3><t3><tdot><t9>. From <t1><t8><t4><tdot><t4> to <t2><t0><t1><tdot><t1>. From <t1><t2><t0><tdot><t3> to <t1><t2><t2><tdot><t4>.",
+  "gt": [
+   [
+    119.7,
+    136.9
+   ],
+   [
+    186.7,
+    203.3
+   ],
+   [
+    121.2,
+    123.8
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9175407060550372,
+   "local": 0.8100959763750463,
+   "precision": 0.9240924092409246
+  }
+ },
+ {
+  "completion": "From <t1><t5><t9><tdot><t5> to <t1><t9><t1><tdot><t3>. From <t0><t5><t1><tdot><t5> to <t0><t8><t0><tdot><t3>.",
+  "gt": [
+   [
+    160.4,
+    193.3
+   ],
+   [
+    49.0,
+    81.4
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9483712092217478,
+   "local": 0.9507725180802102,
+   "precision": 0.985148514851485
+  }
+ },
+ {
+  "completion": "From <t1><t2><t2><tdot><t4> to <t1><t4><t2><tdot><t1>.",
+  "gt": [
+   [
+    123.4,
+    140.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9234967202218357,
+   "local": 0.9289340101522847,
+   "precision": 0.8578680203045693
+  }
+ },
+ {
+  "completion": "From <t1><t0><t8><tdot><t6> to <t1><t0><t8><tdot><t7>.",
+  "gt": [
+   [
+    11.2,
+    38.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.13948717948717948,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t2><t6><tdot><t3> to <t1><t2><t6><tdot><t4>. From <t1><t4><t3><tdot><t3> to <t1><t4><t3><tdot><t4>.",
+  "gt": [
+   [
+    195.0,
+    196.4
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.5,
+   "global": 0.0,
+   "local": 0.005349500713266814,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t3><t2><tdot><t6> to <t1><t6><t1><tdot><t0>. From <t0><t9><t2><tdot><t6> to <t1><t1><t1><tdot><t8>.",
+  "gt": [
+   [
+    131.3,
+    162.8
+   ],
+   [
+    92.3,
+    111.4
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9613029432102187,
+   "local": 0.9664224664224665,
+   "precision": 0.9915966386554623
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    2.4,
+    19.3
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t0><t3><tdot><t8> to <t0><t1><t9><tdot><t9>.",
+  "gt": [
+   [
+    153.2,
+    180.1
+   ],
+   [
+    159.6,
+    171.5
+   ],
+   [
+    31.1,
+    70.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.13846928499496475,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t1><t0><tdot><t4> to <t1><t2><t5><tdot><t8>.",
+  "gt": [
+   [
+    107.5,
+    123.4
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.8306703735674531,
+   "local": 0.8551912568306012,
+   "precision": 0.8441558441558447
+  }
+ },
+ {
+  "completion": "From <t0><t3><t5><tdot><t1> to <t0><t5><t8><tdot><t7>.",
+  "gt": [
+   [
+    15.2,
+    36.9
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0794696960496044,
+   "local": 0.5206896551724137,
+   "precision": 0.07627118644067785
+  }
+ },
+ {
+  "completion": "Answer: From <t1><t3><t8><tdot><t1> to <t1><t6><t4><tdot><t4>. From <t0><t1><t5><tdot><t4> to <t0><t1><t5><tdot><t5>. From <t0><t2><t3><tdot><t8> to <t0><t2><t3><tdot><t9>.",
+  "gt": [
+   [
+    158.9,
+    196.4
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.33333333333333337,
+   "global": 0.17187450940078317,
+   "local": 0.18238993710691823,
+   "precision": 0.2075471698113207
+  }
+ },
+ {
+  "completion": "From <t1><t5><t5><tdot><t5> to <t1><t5><t5><tdot><t6>.",
+  "gt": [
+   [
+    128.3,
+    147.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.3571428571428569,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t1><t0><tdot><t8> to <t1><t3><t8><tdot><t9>. From <t0><t7><t7><tdot><t8> to <t0><t7><t7><tdot><t9>.",
+  "gt": [
+   [
+    33.3,
+    39.1
+   ],
+   [
+    112.3,
+    145.5
+   ],
+   [
+    154.1,
+    179.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.6666666666666667,
+   "global": 0.5732754266408414,
+   "local": 0.33646310871538754,
+   "precision": 0.9432624113475174
+  }
+ },
+ {
+  "completion": "From <t0><t4><t9><tdot><t4> to <t0><t6><t2><tdot><t6>.",
+  "gt": [
+   [
+    51.9,
+    63.4
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.8663961933488137,
+   "local": 0.8821428571428572,
+   "precision": 0.8106060606060607
+  }
+ },
+ {
+  "completion": "From <t0><t6><t8><tdot><t1> to <t0><t8><t3><tdot><t2>. From <t0><t9><t1><tdot><t8> to <t0><t9><t9><tdot><t6>.",
+  "gt": [
+   [
+    69.9,
+    81.4
+   ],
+   [
+    93.6,
+    100.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.8578426027131828,
+   "local": 0.87332418026167,
+   "precision": 0.764192139737991
+  }
+ },
+ {
+  "completion": "From <t0><t8><t3><tdot><t5> to <t0><t8><t9><tdot><t4>. From <t0><t2><t5><tdot><t8> to <t0><t2><t2><tdot><t8>.",
+  "gt": [
+   [
+    78.3,
+    86.5
+   ],
+   [
+    125.1,
+    128.6
+   ],
+   [
+    157.2,
+    160.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.2941172070843737,
+   "local": 0.2117117117117117,
+   "precision": 0.508474576271186
+  }
+ },
+ {
+  "completion": "From <t0><t2><t7><tdot><t9> to <t0><t3><t5><tdot><t2>. From <t1><t4><t2><tdot><t6> to <t1><t6><t1><tdot><t2>. From <t1><t5><t1><tdot><t6> to <t1><t5><t8><tdot><t0>. From <t0><t2><t8><tdot><t9> to <t0><t4><t0><tdot><t2>.",
+  "gt": [
+   [
+    27.9,
+    36.4
+   ],
+   [
+    143.8,
+    160.0
+   ],
+   [
+    149.8,
+    157.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.75,
+   "global": 1.0206016865642233,
+   "local": 0.6781141528208455,
+   "precision": 0.7993527508090612
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    51.0,
+    53.8
+   ],
+   [
+    165.7,
+    178.7
+   ],
+   [
+    162.5,
+    200.8
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t3><t2><tdot><t2> to <t1><t5><t3><tdot><t1>. From <t1><t1><t5><tdot><t7> to <t1><t4><t4><tdot><t8>.",
+  "gt": [
+   [
+    126.7,
+    136.9
+   ],
+   [
+    41.6,
+    62.2
+   ],
+   [
+    24.3,
+    60.6
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.6666666666666667,
+   "global": 0.19521484765749883,
+   "local": 0.28679481537365364,
+   "precision": 0.2727272727272729
+  }
+ },
+ {
+  "completion": "From <t1><t2><t2><tdot><t7> to <t1><t3><t3><tdot><t8>. From <t0><t3><t3><tdot><t6> to <t0><t6><t0><tdot><t5>. From <t1><t0><t0><tdot><t6> to <t1><t0><t0><tdot><t7>.",
+  "gt": [
+   [
+    197.2,
+    219.9
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.33333333333333337,
+   "global": 0.0,
+   "local": 0.05795610425240059,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "Answer: From <t0><t4><t2><tdot><t9> to <t0><t7><t5><tdot><t9>. From <t1><t6><t4><tdot><t5> to <t1><t6><t1><tdot><t5>.",
+  "gt": [
+   [
+    79.7,
+    99.7
+   ],
+   [
+    133.9,
+    167.3
+   ],
+   [
+    37.3,
+    38.4
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.15551643192488265,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t6><t9><tdot><t3> to <t2><t0><t4><tdot><t8>.",
+  "gt": [
+   [
+    169.3,
+    202.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9695205173146383,
+   "local": 0.9704225352112673,
+   "precision": 0.9408450704225346
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    71.9,
+    107.1
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t9><t4><tdot><t1> to <t1><t2><t3><tdot><t8>. From <t0><t9><t5><tdot><t1> to <t1><t2><t8><tdot><t8>.",
+  "gt": [
+   [
+    91.7,
+    125.1
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.5,
+   "global": 0.91042531779112,
+   "local": 0.47230538922155696,
+   "precision": 0.8933717579250716
+  }
+ },
+ {
+  "completion": "From <t1><t0><t5><tdot><t0> to <t1><t2><t7><tdot><t6>. From <t0><t5><t9><tdot><t1> to <t0><t7><t2><tdot><t9>.",
+  "gt": [
+   [
+    18.4,
+    34.7
+   ],
+   [
+    102.3,
+    125.4
+   ],
+   [
+    60.3,
+    71.4
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.6666666666666667,
+   "global": 0.7249707277789065,
+   "local": 0.6017786561264823,
+   "precision": 0.8653846153846159
+  }
+ },
+ {
+  "completion": "From <t0><t1><t0><tdot><t3> to <t0><t3><t8><tdot><t2>. From <t1><t5><t8><tdot><t4> to <t1><t7><t0><tdot><t6>.",
+  "gt": [
+   [
+    13.2,
+    37.7
+   ],
+   [
+    158.2,
+    173.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.924432726135834,
+   "local": 0.9256151312602922,
+   "precision": 0.9152119700748128
+  }
+ },
+ {
+  "completion": "From <t1><t2><t9><tdot><t6> to <t1><t5><t0><tdot><t7>.",
+  "gt": [
+   [
+    127.5,
+    151.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9461877998253162,
+   "local": 0.9489361702127659,
+   "precision": 1.0
+  }
+ },
+ {
+  "completion": "From <t1><t8><t5><tdot><t0> to <t2><t2><t1><tdot><t4>.",
+  "gt": [
+   [
+    184.5,
+    220.9
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.986263209168833,
+   "local": 0.986449864498645,
+   "precision": 0.9862637362637363
+  }
+ },
+ {
+  "completion": "From <t1><t5><t0><tdot><t9> to <t1><t5><t1><tdot><t0>.",
+  "gt": [
+   [
+    164.3,
+    204.1
+   ],
+   [
+    170.4,
+    194.9
+   ],
+   [
+    7.5,
+    10.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.12499999999999996,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t8><t2><tdot><t8> to <t0><t8><t8><tdot><t2>.",
+  "gt": [
+   [
+    15.0,
+    22.2
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.08606557377049184,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t6><t4><tdot><t4> to <t1><t6><t4><tdot><t5>.",
+  "gt": [
+   [
+    47.0,
+    51.4
+   ],
+   [
+    144.3,
+    146.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.030940594059405607,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    171.9,
+    177.7
+   ],
+   [
+    88.4,
+    103.3
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "Answer: From <t0><t0><t5><tdot><t8> to <t0><t2><t9><tdot><t6>. From <t1><t3><t0><tdot><t4> to <t1><t6><t6><tdot><t3>. From <t0><t0><t6><tdot><t8> to <t0><t3><t4><tdot><t6>.",
+  "gt": [
+   [
+    150.0,
+    185.5
+   ],
+   [
+    8.1,
+    31.8
+   ],
+   [
+    132.7,
+    167.7
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 1.0,
+   "global": 0.9263682909733159,
+   "local": 0.6803253874162554,
+   "precision": 0.8856259659969091
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    67.0,
+    105.6
+   ],
+   [
+    144.6,
+    153.8
+   ],
+   [
+    186.5,
+    187.4
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t0><t0><tdot><t0> to <t0><t3><t2><tdot><t7>.",
+  "gt": [
+   [
+    1.8,
+    32.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9684537286222968,
+   "local": 0.9694189602446482,
+   "precision": 0.9388379204892965
+  }
+ },
+ {
+  "completion": "From <t0><t8><t5><tdot><t2> to <t0><t8><t2><tdot><t2>. From <t0><t9><t7><tdot><t5> to <t1><t3><t4><tdot><t7>. From <t1><t2><t5><tdot><t1> to <t1><t2><t5><tdot><t2>.",
+  "gt": [
+   [
+    101.2,
+    114.5
+   ],
+   [
+    188.9,
+    192.3
+   ],
+   [
+    118.9,
+    126.8
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.6666666666666667,
+   "global": 0.6860836409760255,
+   "local": 0.3950308515947554,
+   "precision": 0.5698924731182794
+  }
+ },
+ {
+  "completion": "From <t0><t6><t8><tdot><t4> to <t0><t9><t4><tdot><t9>.",
+  "gt": [
+   [
+    67.8,
+    93.9
+   ],
+   [
+    39.1,
+    59.9
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.6948224079734875,
+   "local": 0.4852398523985239,
+   "precision": 0.9622641509433962
+  }
+ },
+ {
+  "completion": "From <t1><t1><t9><tdot><t2> to <t1><t2><t4><tdot><t8>. From <t0><t5><t5><tdot><t4> to <t0><t8><t6><tdot><t3>. From <t0><t6><t0><tdot><t3> to <t0><t8><t9><tdot><t3>.",
+  "gt": [
+   [
+    120.7,
+    127.7
+   ],
+   [
+    53.7,
+    86.6
+   ],
+   [
+    60.3,
+    91.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 1.1680285831641932,
+   "local": 0.8943646791310605,
+   "precision": 0.9620253164556962
+  }
+ },
+ {
+  "completion": "From <t1><t7><t4><tdot><t3> to <t1><t7><t4><tdot><t4>.",
+  "gt": [
+   [
+    76.8,
+    94.6
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.09170081967213112,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "Answer: From <t0><t6><t3><tdot><t0> to <t0><t6><t4><tdot><t6>.",
+  "gt": [
+   [
+    61.3,
+    62.4
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.4090909090909088,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "Answer: From <t1><t3><t3><tdot><t1> to <t1><t6><t6><tdot><t7>.",
+  "gt": [
+   [
+    134.3,
+    167.2
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 1.0,
+   "global": 0.9744355609748743,
+   "local": 0.975073313782991,
+   "precision": 0.9642857142857137
+  }
+ },
+ {
+  "completion": "From <t0><t6><t0><tdot><t5> to <t0><t7><t5><tdot><t9>.",
+  "gt": [
+   [
+    151.1,
+    181.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.1892561983471075,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t8><t6><tdot><t5> to <t2><t0><t3><tdot><t0>.",
+  "gt": [
+   [
+    188.1,
+    204.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9003015604095511,
+   "local": 0.9093406593406598,
+   "precision": 0.9030303030303034
+  }
+ },
+ {
+  "completion": "From <t0><t0><t0><tdot><t3> to <t0><t0><t0><tdot><t4>.",
+  "gt": [
+   [
+    144.0,
+    156.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.03974358974358977,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t3><t7><tdot><t3> to <t1><t3><t6><tdot><t9>.",
+  "gt": [
+   [
+    135.1,
+    136.8
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t2><t3><tdot><t0> to <t0><t3><t2><tdot><t2>. From <t1><t4><t9><tdot><t6> to <t1><t4><t9><tdot><t7>.",
+  "gt": [
+   [
+    162.1,
+    188.8
+   ],
+   [
+    85.9,
+    119.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.2820869299115717,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t2><t5><tdot><t9> to <t0><t2><t2><tdot><t9>.",
+  "gt": [
+   [
+    10.8,
+    34.9
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t8><t1><tdot><t8> to <t1><t1><t2><tdot><t4>.",
+  "gt": [
+   [
+    84.6,
+    113.4
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.936026404970282,
+   "local": 0.9398734177215191,
+   "precision": 0.9084967320261439
+  }
+ },
+ {
+  "completion": "From <t0><t5><t0><tdot><t3> to <t0><t4><t7><tdot><t3>. From <t0><t7><t8><tdot><t3> to <t0><t8><t1><tdot><t2>. From <t1><t4><t0><tdot><t1> to <t1><t4><t0><tdot><t2>.",
+  "gt": [
+   [
+    93.8,
+    104.8
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.5,
+   "global": 0.0,
+   "local": 0.13113207547169817,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "Answer: From <t1><t1><t0><tdot><t8> to <t1><t3><t1><tdot><t8>.",
+  "gt": [
+   [
+    112.5,
+    133.0
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 1.0,
+   "global": 0.930119937175478,
+   "local": 0.9346846846846849,
+   "precision": 0.919047619047619
+  }
+ },
+ {
+  "completion": "From <t1><t7><t4><tdot><t7> to <t1><t8><t2><tdot><t4>. From <t1><t6><t8><tdot><t4> to <t1><t7><t4><tdot><t0>. From <t1><t7><t5><tdot><t7> to <t1><t8><t7><tdot><t4>.",
+  "gt": [
+   [
+    175.6,
+    181.9
+   ],
+   [
+    166.6,
+    173.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.6666666666666667,
+   "global": 0.7032252773988763,
+   "local": 0.573300573300573,
+   "precision": 0.5956284153005464
+  }
+ },
+ {
+  "completion": "From <t1><t4><t2><tdot><t8> to <t1><t3><t9><tdot><t8>.",
+  "gt": [
+   [
+    17.5,
+    49.1
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t7><t6><tdot><t5> to <t0><t7><t3><tdot><t5>. From <t0><t8><t5><tdot><t2> to <t0><t8><t5><tdot><t3>. From <t1><t7><t5><tdot><t5> to <t2><t1><t1><tdot><t9>.",
+  "gt": [
+   [
+    153.0,
+    166.4
+   ],
+   [
+    71.4,
+    102.1
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.002480894061103553,
+   "local": 0.4621895444716656,
+   "precision": 0.0027397260273971046
+  }
+ },
+ {
+  "completion": "From <t0><t6><t0><tdot><t8> to <t0><t6><t0><tdot><t9>. From <t1><t5><t1><tdot><t0> to <t1><t5><t1><tdot><t1>. From <t0><t7><t2><tdot><t9> to <t0><t7><t3><tdot><t0>.",
+  "gt": [
+   [
+    14.5,
+    46.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.33333333333333337,
+   "global": 0.0,
+   "local": 0.11530172413793105,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t3><t3><tdot><t4> to <t0><t3><t0><tdot><t4>.",
+  "gt": [
+   [
+    25.5,
+    32.6
+   ],
+   [
+    113.4,
+    148.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t6><t1><tdot><t2> to <t1><t7><t2><tdot><t8>. From <t1><t6><t2><tdot><t2> to <t1><t7><t7><tdot><t8>.",
+  "gt": [
+   [
+    162.5,
+    173.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.5,
+   "global": 0.7749072172222784,
+   "local": 0.4682203389830509,
+   "precision": 0.6325301204819268
+  }
+ },
+ {
+  "completion": "From <t1><t7><t7><tdot><t5> to <t2><t1><t6><tdot><t9>. From <t1><t6><t7><tdot><t1> to <t1><t9><t5><tdot><t6>.",
+  "gt": [
+   [
+    177.3,
+    214.0
+   ],
+   [
+    169.0,
+    196.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 1.1263152776918122,
+   "local": 0.9566197691197691,
+   "precision": 0.9036144578313251
+  }
+ },
+ {
+  "completion": "From <t1><t7><t4><tdot><t3> to <t2><t0><t0><tdot><t2>. From <t1><t2><t6><tdot><t1> to <t1><t5><t5><tdot><t0>.",
+  "gt": [
+   [
+    171.6,
+    203.0
+   ],
+   [
+    125.4,
+    152.2
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.920353466464364,
+   "local": 0.9266493802719915,
+   "precision": 0.9489051094890508
+  }
+ },
+ {
+  "completion": "From <t0><t0><t1><tdot><t4> to <t0><t0><t0><tdot><t0>. From <t0><t4><t4><tdot><t6> to <t0><t4><t4><tdot><t7>. From <t0><t2><t8><tdot><t2> to <t0><t2><t8><tdot><t3>.",
+  "gt": [
+   [
+    65.4,
+    81.8
+   ],
+   [
+    71.9,
+    74.4
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.12495636084345757,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t4><t1><tdot><t0> to <t0><t3><t8><tdot><t0>.",
+  "gt": [
+   [
+    172.5,
+    190.4
+   ],
+   [
+    102.4,
+    110.1
+   ],
+   [
+    172.8,
+    181.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "Answer: From <t0><t3><t3><tdot><t4> to <t0><t4><t8><tdot><t6>.",
+  "gt": [
+   [
+    32.7,
+    47.5
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 1.0,
+   "global": 0.9399994374224924,
+   "local": 0.9433962264150944,
+   "precision": 0.9276315789473684
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    120.3,
+    127.3
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "Answer: From <t1><t3><t3><tdot><t9> to <t1><t3><t4><tdot><t0>. From <t1><t7><t8><tdot><t1> to <t1><t7><t8><tdot><t2>. From <t0><t6><t7><tdot><t6> to <t0><t6><t7><tdot><t7>.",
+  "gt": [
+   [
+    110.4,
+    146.5
+   ],
+   [
+    170.7,
+    190.9
+   ],
+   [
+    69.9,
+    89.7
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 1.0,
+   "global": 0.005235594134603646,
+   "local": 0.48469551113996334,
+   "precision": 0.6666666666666351
+  }
+ },
+ {
+  "completion": "From <t1><t7><t3><tdot><t9> to <t1><t7><t4><tdot><t0>.",
+  "gt": [
+   [
+    3.8,
+    11.4
+   ],
+   [
+    65.5,
+    78.4
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.029953917050691253,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t7><t1><tdot><t3> to <t0><t9><t7><tdot><t6>.",
+  "gt": [
+   [
+    32.5,
+    44.5
+   ],
+   [
+    23.2,
+    40.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.14717741935483872,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t2><t2><tdot><t1> to <t1><t5><t1><tdot><t1>. From <t0><t6><t4><tdot><t2> to <t0><t8><t0><tdot><t9>.",
+  "gt": [
+   [
+    121.7,
+    148.9
+   ],
+   [
+    64.5,
+    78.9
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.943871186237765,
+   "local": 0.9434600187380343,
+   "precision": 0.9015317286652081
+  }
+ },
+ {
+  "completion": "From <t1><t1><t4><tdot><t0> to <t1><t4><t2><tdot><t1>. From <t1><t5><t9><tdot><t0> to <t1><t5><t9><tdot><t1>.",
+  "gt": [
+   [
+    15.8,
+    19.1
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.5,
+   "global": 0.0,
+   "local": 0.062153602533650015,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t8><t7><tdot><t6> to <t1><t1><t5><tdot><t2>.",
+  "gt": [
+   [
+    110.5,
+    133.2
+   ],
+   [
+    148.4,
+    155.4
+   ],
+   [
+    117.7,
+    120.2
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.15719013315444477,
+   "local": 0.1838450292397661,
+   "precision": 0.17028985507246383
+  }
+ },
+ {
+  "completion": "From <t0><t9><t1><tdot><t0> to <t1><t2><t0><tdot><t6>.",
+  "gt": [
+   [
+    88.4,
+    123.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9178289322807816,
+   "local": 0.9240687679083095,
+   "precision": 1.0
+  }
+ },
+ {
+  "completion": "From <t0><t1><t1><tdot><t9> to <t0><t3><t8><tdot><t2>. From <t0><t4><t1><tdot><t7> to <t0><t4><t1><tdot><t8>. From <t0><t2><t4><tdot><t7> to <t0><t2><t1><tdot><t7>.",
+  "gt": [
+   [
+    113.8,
+    133.2
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.5,
+   "global": 0.0,
+   "local": 0.09418796372629842,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t1><t0><tdot><t9> to <t1><t1><t1><tdot><t0>.",
+  "gt": [
+   [
+    161.1,
+    190.9
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.186875,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t3><t4><tdot><t7> to <t1><t3><t4><tdot><t8>.",
+  "gt": [
+   [
+    34.0,
+    58.8
+   ],
+   [
+    191.0,
+    214.9
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.07481296758104744,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t4><t0><tdot><t1> to <t1><t6><t1><tdot><t0>. From <t0><t3><t3><tdot><t6> to <t0><t7><t0><tdot><t8>. From <t0><t9><t0><tdot><t0> to <t1><t1><t2><tdot><t1>.",
+  "gt": [
+   [
+    142.6,
+    163.4
+   ],
+   [
+    35.8,
+    71.4
+   ],
+   [
+    89.9,
+    111.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.946902142993259,
+   "local": 0.9473489942016409,
+   "precision": 0.933915211970075
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    97.7,
+    109.7
+   ],
+   [
+    69.8,
+    100.2
+   ],
+   [
+    168.4,
+    179.7
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t9><t4><tdot><t1> to <t2><t1><t8><tdot><t8>.",
+  "gt": [
+   [
+    195.1,
+    217.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.946694556999005,
+   "local": 0.9493927125506073,
+   "precision": 0.8987854251012146
+  }
+ },
+ {
+  "completion": "From <t1><t7><t6><tdot><t7> to <t1><t7><t6><tdot><t8>. From <t1><t0><t1><tdot><t1> to <t1><t0><t1><tdot><t2>.",
+  "gt": [
+   [
+    186.1,
+    205.0
+   ],
+   [
+    101.5,
+    108.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.40770938783306304,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "Answer: From <t0><t4><t7><tdot><t3> to <t0><t7><t5><tdot><t1>. From <t0><t4><t8><tdot><t3> to <t0><t8><t0><tdot><t1>.",
+  "gt": [
+   [
+    45.0,
+    77.5
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.5,
+   "global": 0.9249611868420126,
+   "local": 0.4638461538461538,
+   "precision": 0.9207317073170733
+  }
+ },
+ {
+  "completion": "From <t0><t0><t2><tdot><t8> to <t0><t0><t2><tdot><t9>. From <t0><t6><t0><tdot><t3> to <t0><t8><t9><tdot><t0>.",
+  "gt": [
+   [
+    197.9,
+    220.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.5,
+   "global": 0.0,
+   "local": 0.026067983463481853,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t6><t7><tdot><t5> to <t1><t8><t0><tdot><t6>.",
+  "gt": [
+   [
+    169.8,
+    181.7
+   ],
+   [
+    20.1,
+    27.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.662576165738615,
+   "local": 0.4401408450704224,
+   "precision": 0.8244274809160296
+  }
+ },
+ {
+  "completion": "From <t1><t4><t4><tdot><t9> to <t1><t5><t6><tdot><t1>. From <t1><t1><t6><tdot><t7> to <t1><t3><t7><tdot><t9>.",
+  "gt": [
+   [
+    144.7,
+    157.8
+   ],
+   [
+    118.5,
+    137.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9331254430125868,
+   "local": 0.9354385712228139,
+   "precision": 0.9259259259259262
+  }
+ },
+ {
+  "completion": "From <t0><t6><t6><tdot><t3> to <t1><t0><t4><tdot><t4>.",
+  "gt": [
+   [
+    65.7,
+    103.4
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9788912947663746,
+   "local": 0.979328165374677,
+   "precision": 0.973753280839895
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    181.4,
+    194.3
+   ],
+   [
+    199.1,
+    214.8
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t2><t0><tdot><t1> to <t1><t5><t3><tdot><t4>. From <t1><t6><t7><tdot><t6> to <t1><t7><t9><tdot><t1>. From <t1><t2><t1><tdot><t1> to <t1><t5><t8><tdot><t4>.",
+  "gt": [
+   [
+    120.8,
+    152.1
+   ],
+   [
+    168.0,
+    177.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.6666666666666667,
+   "global": 0.8982295738020585,
+   "local": 0.6247725986856423,
+   "precision": 0.8152610441767069
+  }
+ },
+ {
+  "completion": "From <t1><t5><t0><tdot><t7> to <t1><t5><t0><tdot><t8>.",
+  "gt": [
+   [
+    22.3,
+    54.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.1237354085603114,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t3><t2><tdot><t2> to <t0><t6><t8><tdot><t3>. From <t0><t3><t3><tdot><t2> to <t0><t7><t3><tdot><t3>.",
+  "gt": [
+   [
+    188.4,
+    197.1
+   ],
+   [
+    31.7,
+    70.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.8645593025062868,
+   "local": 0.5570387242661164,
+   "precision": 0.9318734793187349
+  }
+ },
+ {
+  "completion": "From <t0><t9><t7><tdot><t7> to <t0><t9><t4><tdot><t7>. From <t0><t2><t6><tdot><t7> to <t0><t2><t3><tdot><t7>. From <t0><t4><t1><tdot><t8> to <t0><t4><t1><tdot><t9>.",
+  "gt": [
+   [
+    118.9,
+    120.2
+   ],
+   [
+    155.8,
+    165.2
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.01924635332252833,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "Answer: From <t1><t9><t7><tdot><t7> to <t2><t1><t4><tdot><t1>. From <t0><t0><t4><tdot><t8> to <t0><t2><t3><tdot><t3>.",
+  "gt": [
+   [
+    196.6,
+    212.3
+   ],
+   [
+    6.0,
+    24.7
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 1.0,
+   "global": 0.9206343940916711,
+   "local": 0.9259081119885144,
+   "precision": 0.914040114613181
+  }
+ },
+ {
+  "completion": "From <t1><t6><t0><tdot><t3> to <t1><t9><t5><tdot><t0>.",
+  "gt": [
+   [
+    162.7,
+    193.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9436828822958332,
+   "local": 0.9466858789625361,
+   "precision": 0.8933717579250723
+  }
+ },
+ {
+  "completion": "From <t1><t3><t1><tdot><t6> to <t1><t3><t6><tdot><t9>. From <t0><t7><t1><tdot><t4> to <t0><t8><t9><tdot><t6>. From <t1><t5><t0><tdot><t8> to <t1><t6><t7><tdot><t2>. From <t1><t3><t2><tdot><t6> to <t1><t4><t1><tdot><t9>.",
+  "gt": [
+   [
+    133.4,
+    139.5
+   ],
+   [
+    74.3,
+    88.6
+   ],
+   [
+    150.1,
+    166.8
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.75,
+   "global": 0.8878043609193726,
+   "local": 0.6455530968772142,
+   "precision": 0.8106904231625838
+  }
+ },
+ {
+  "completion": "From <t0><t0><t7><tdot><t3> to <t0><t4><t4><tdot><t8>.",
+  "gt": [
+   [
+    8.9,
+    43.2
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9554312292543796,
+   "local": 0.9573333333333334,
+   "precision": 0.9146666666666667
+  }
+ },
+ {
+  "completion": "From <t0><t1><t2><tdot><t0> to <t0><t0><t9><tdot><t0>. From <t1><t2><t7><tdot><t1> to <t1><t2><t4><tdot><t1>. From <t1><t6><t1><tdot><t0> to <t1><t5><t8><tdot><t0>.",
+  "gt": [
+   [
+    117.0,
+    119.4
+   ],
+   [
+    90.9,
+    118.6
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t1><t9><tdot><t4> to <t0><t4><t1><tdot><t2>. From <t1><t4><t1><tdot><t4> to <t1><t5><t7><tdot><t4>. From <t1><t0><t9><tdot><t0> to <t1><t2><t5><tdot><t7>.",
+  "gt": [
+   [
+    127.6,
+    147.2
+   ],
+   [
+    150.0,
+    189.2
+   ],
+   [
+    117.9,
+    122.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.2947184072501856,
+   "local": 0.46656433774769474,
+   "precision": 0.3174311926605501
+  }
+ },
+ {
+  "completion": "From <t0><t8><t5><tdot><t2> to <t0><t9><t3><tdot><t2>. From <t1><t1><t9><tdot><t3> to <t1><t5><t0><tdot><t6>.",
+  "gt": [
+   [
+    87.6,
+    90.8
+   ],
+   [
+    118.4,
+    153.1
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.8937818604294193,
+   "local": 0.8255043227665707,
+   "precision": 0.8778625954198473
+  }
+ },
+ {
+  "completion": "Answer: From <t0><t1><t7><tdot><t1> to <t0><t3><t8><tdot><t9>.",
+  "gt": [
+   [
+    18.3,
+    38.1
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 1.0,
+   "global": 0.9519225323135032,
+   "local": 0.9541284403669725,
+   "precision": 0.9082568807339451
+  }
+ },
+ {
+  "completion": "From <t1><t0><t2><tdot><t7> to <t1><t0><t2><tdot><t8>.",
+  "gt": [
+   [
+    87.6,
+    98.7
+   ],
+   [
+    199.2,
+    212.4
+   ],
+   [
+    194.2,
+    213.6
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.12280701754385966,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    64.2,
+    103.2
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t5><t1><tdot><t8> to <t0><t8><t5><tdot><t5>.",
+  "gt": [
+   [
+    95.5,
+    120.9
+   ],
+   [
+    61.3,
+    64.3
+   ],
+   [
+    29.6,
+    68.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.39009855751251343,
+   "local": 0.21645796064400716,
+   "precision": 0.4955489614243324
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    21.4,
+    61.3
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "Answer: From <t1><t6><t2><tdot><t1> to <t1><t6><t2><tdot><t2>. From <t0><t0><t2><tdot><t4> to <t0><t1><t3><tdot><t4>. From <t1><t3><t8><tdot><t3> to <t1><t3><t5><tdot><t3>.",
+  "gt": [
+   [
+    108.4,
+    113.8
+   ],
+   [
+    195.3,
+    217.0
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.13607571134721844,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "Answer: From <t1><t2><t1><tdot><t3> to <t1><t4><t7><tdot><t3>. From <t1><t3><t5><tdot><t8> to <t1><t7><t2><tdot><t2>. From <t1><t2><t2><tdot><t3> to <t1><t5><t2><tdot><t3>.",
+  "gt": [
+   [
+    121.1,
+    146.8
+   ],
+   [
+    137.7,
+    174.9
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.6666666666666667,
+   "global": 1.0544810336006347,
+   "local": 0.6426058973207603,
+   "precision": 1.0
+  }
+ },
+ {
+  "completion": "Answer: From <t1><t5><t3><tdot><t0> to <t1><t6><t1><tdot><t0>. From <t1><t0><t7><tdot><t4> to <t1><t1><t4><tdot><t9>.",
+  "gt": [
+   [
+    150.6,
+    159.0
+   ],
+   [
+    106.7,
+    116.2
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 1.0,
+   "global": 0.808382687708724,
+   "local": 0.8415991902834008,
+   "precision": 0.8709677419354839
+  }
+ },
+ {
+  "completion": "From <t0><t8><t7><tdot><t3> to <t0><t8><t4><tdot><t3>. From <t0><t4><t3><tdot><t0> to <t0><t7><t0><tdot><t3>.",
+  "gt": [
+   [
+    11.4,
+    51.1
+   ],
+   [
+    86.4,
+    125.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.15340870462711598,
+   "local": 0.2843803056027165,
+   "precision": 0.29670329670329676
+  }
+ },
+ {
+  "completion": "From <t1><t8><t8><tdot><t1> to <t2><t0><t5><tdot><t0>. From <t1><t9><t0><tdot><t0> to <t2><t0><t7><tdot><t1>. From <t0><t3><t1><tdot><t9> to <t0><t3><t8><tdot><t4>.",
+  "gt": [
+   [
+    190.7,
+    207.6
+   ],
+   [
+    188.1,
+    208.8
+   ],
+   [
+    29.6,
+    37.2
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 1.1513432120502225,
+   "local": 0.8917526716439762,
+   "precision": 0.9529411764705884
+  }
+ },
+ {
+  "completion": "From <t1><t9><t9><tdot><t2> to <t1><t9><t6><tdot><t2>.",
+  "gt": [
+   [
+    94.4,
+    105.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t3><t1><tdot><t3> to <t1><t6><t4><tdot><t8>. From <t0><t7><t5><tdot><t5> to <t0><t9><t6><tdot><t6>. From <t0><t0><t2><tdot><t6> to <t0><t1><t4><tdot><t5>.",
+  "gt": [
+   [
+    132.5,
+    164.1
+   ],
+   [
+    76.5,
+    98.1
+   ],
+   [
+    4.9,
+    14.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9481820070116622,
+   "local": 0.939897800356439,
+   "precision": 0.9218045112781953
+  }
+ },
+ {
+  "completion": "From <t0><t7><t9><tdot><t4> to <t1><t1><t8><tdot><t6>. From <t1><t6><t8><tdot><t0> to <t1><t6><t8><tdot><t7>. From <t0><t8><t0><tdot><t0> to <t1><t1><t6><tdot><t3>.",
+  "gt": [
+   [
+    80.1,
+    119.0
+   ],
+   [
+    167.4,
+    168.8
+   ],
+   [
+    79.9,
+    114.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 1.2869560462020486,
+   "local": 0.9042531542531526,
+   "precision": 0.9874686716791979
+  }
+ },
+ {
+  "completion": "From <t0><t9><t0><tdot><t8> to <t0><t9><t0><tdot><t9>.",
+  "gt": [
+   [
+    188.7,
+    224.8
+   ],
+   [
+    4.9,
+    31.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.07761627906976748,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t7><t9><tdot><t1> to <t1><t2><t1><tdot><t8>.",
+  "gt": [
+   [
+    81.3,
+    120.2
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9534308502651838,
+   "local": 0.9555035128805621,
+   "precision": 0.9110070257611242
+  }
+ },
+ {
+  "completion": "From <t1><t0><t0><tdot><t4> to <t1><t1><t4><tdot><t5>.",
+  "gt": [
+   [
+    101.9,
+    117.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.8542367311924816,
+   "local": 0.8727810650887574,
+   "precision": 0.8936170212765957
+  }
+ },
+ {
+  "completion": "From <t0><t6><t8><tdot><t3> to <t0><t7><t0><tdot><t5>.",
+  "gt": [
+   [
+    69.5,
+    71.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.4545447479345276,
+   "local": 0.6470588235294115,
+   "precision": 0.454545454545454
+  }
+ },
+ {
+  "completion": "From <t1><t7><t4><tdot><t1> to <t1><t7><t9><tdot><t3>. From <t1><t2><t4><tdot><t4> to <t1><t6><t3><tdot><t6>.",
+  "gt": [
+   [
+    171.2,
+    178.5
+   ],
+   [
+    125.5,
+    160.6
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9101377281427285,
+   "local": 0.8596545099521289,
+   "precision": 0.8896396396396395
+  }
+ },
+ {
+  "completion": "Answer: ",
+  "gt": [
+   [
+    117.6,
+    144.0
+   ],
+   [
+    50.5,
+    77.0
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t0><t7><tdot><t8> to <t1><t4><t5><tdot><t5>. From <t1><t7><t2><tdot><t1> to <t1><t9><t4><tdot><t8>.",
+  "gt": [
+   [
+    40.5,
+    47.5
+   ],
+   [
+    110.6,
+    147.2
+   ],
+   [
+    170.9,
+    195.9
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.6666666666666667,
+   "global": 0.8930227439892211,
+   "local": 0.6322978003384097,
+   "precision": 0.9536423841059604
+  }
+ },
+ {
+  "completion": "From <t0><t6><t5><tdot><t3> to <t0><t7><t0><tdot><t1>. From <t1><t6><t1><tdot><t8> to <t1><t6><t8><tdot><t7>. From <t0><t9><t1><tdot><t5> to <t1><t2><t4><tdot><t7>.",
+  "gt": [
+   [
+    67.3,
+    70.5
+   ],
+   [
+    164.7,
+    169.9
+   ],
+   [
+    92.7,
+    125.9
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.8971093065751723,
+   "local": 0.8270868761824833,
+   "precision": 0.8641425389755015
+  }
+ },
+ {
+  "completion": "From <t0><t0><t8><tdot><t5> to <t0><t0><t8><tdot><t6>. From <t1><t3><t2><tdot><t4> to <t1><t3><t7><tdot><t4>.",
+  "gt": [
+   [
+    5.8,
+    6.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.5,
+   "global": 0.0,
+   "local": 0.0892857142857143,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t0><t8><tdot><t3> to <t0><t3><t4><tdot><t4>.",
+  "gt": [
+   [
+    6.0,
+    31.6
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9013534303621716,
+   "local": 0.9102112676056338,
+   "precision": 0.8927203065134101
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    166.1,
+    173.4
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    3.2,
+    9.1
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t0><t6><tdot><t0> to <t1><t0><t6><tdot><t1>. From <t0><t1><t7><tdot><t7> to <t0><t4><t8><tdot><t2>.",
+  "gt": [
+   [
+    39.0,
+    39.8
+   ],
+   [
+    55.9,
+    66.6
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.038004351706059016,
+   "local": 0.3103422376069492,
+   "precision": 0.026143790849673113
+  }
+ },
+ {
+  "completion": "From <t0><t4><t3><tdot><t8> to <t0><t4><t3><tdot><t9>.",
+  "gt": [
+   [
+    105.2,
+    126.1
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.12758201701093558,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t6><t3><tdot><t7> to <t1><t9><t9><tdot><t8>. From <t0><t1><t5><tdot><t7> to <t0><t4><t3><tdot><t2>. From <t0><t2><t6><tdot><t6> to <t0><t4><t1><tdot><t0>.",
+  "gt": [
+   [
+    166.4,
+    201.6
+   ],
+   [
+    13.0,
+    40.7
+   ],
+   [
+    26.2,
+    42.9
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 1.0488821731572813,
+   "local": 0.9285594182338985,
+   "precision": 0.9528301886792451
+  }
+ },
+ {
+  "completion": "Answer: From <t0><t4><t5><tdot><t4> to <t0><t5><t3><tdot><t5>. From <t0><t4><t6><tdot><t4> to <t0><t5><t8><tdot><t5>.",
+  "gt": [
+   [
+    46.0,
+    54.8
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.5,
+   "global": 0.8036524139199337,
+   "local": 0.44946808510638303,
+   "precision": 0.6717557251908394
+  }
+ },
+ {
+  "completion": "From <t1><t1><t3><tdot><t3> to <t1><t1><t0><tdot><t3>.",
+  "gt": [
+   [
+    141.6,
+    159.1
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t4><t9><tdot><t6> to <t0><t4><t9><tdot><t7>. From <t1><t8><t8><tdot><t4> to <t2><t0><t2><tdot><t9>. From <t0><t4><t5><tdot><t8> to <t0><t4><t2><tdot><t8>.",
+  "gt": [
+   [
+    174.6,
+    177.6
+   ],
+   [
+    67.6,
+    86.9
+   ],
+   [
+    102.4,
+    117.4
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.6666666666666667,
+   "global": 0.0,
+   "local": 0.18974696615163086,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    15.1,
+    32.2
+   ],
+   [
+    117.2,
+    120.1
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    90.9,
+    111.6
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t5><t0><tdot><t0> to <t1><t5><t1><tdot><t6>. From <t0><t5><t0><tdot><t9> to <t0><t4><t7><tdot><t9>.",
+  "gt": [
+   [
+    26.0,
+    33.1
+   ],
+   [
+    137.5,
+    166.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.08533324708981131,
+   "local": 0.26388888888888884,
+   "precision": 1.0
+  }
+ },
+ {
+  "completion": "From <t1><t2><t5><tdot><t9> to <t1><t5><t3><tdot><t5>. From <t0><t4><t5><tdot><t7> to <t0><t7><t3><tdot><t3>.",
+  "gt": [
+   [
+    125.1,
+    151.8
+   ],
+   [
+    43.8,
+    73.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9587808448827779,
+   "local": 0.9603161900697111,
+   "precision": 0.9692028985507248
+  }
+ },
+ {
+  "completion": "Answer: From <t1><t4><t3><tdot><t5> to <t1><t4><t3><tdot><t6>. From <t1><t7><t4><tdot><t8> to <t1><t7><t1><tdot><t8>. From <t0><t6><t9><tdot><t2> to <t1><t0><t3><tdot><t0>.",
+  "gt": [
+   [
+    112.5,
+    149.9
+   ],
+   [
+    6.8,
+    8.0
+   ],
+   [
+    7.3,
+    20.1
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.6666666666666667,
+   "global": 0.002344186972910749,
+   "local": 0.24826869096645968,
+   "precision": 0.0029498525073744643
+  }
+ },
+ {
+  "completion": "From <t1><t0><t3><tdot><t1> to <t1><t1><t6><tdot><t5>. From <t1><t9><t7><tdot><t0> to <t2><t1><t1><tdot><t0>. From <t0><t8><t1><tdot><t8> to <t0><t8><t6><tdot><t0>.",
+  "gt": [
+   [
+    102.4,
+    118.5
+   ],
+   [
+    198.7,
+    208.4
+   ],
+   [
+    79.0,
+    86.4
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.8425920668917776,
+   "local": 0.8487871411784459,
+   "precision": 0.863924050632912
+  }
+ },
+ {
+  "completion": "From <t0><t3><t2><tdot><t4> to <t0><t4><t9><tdot><t9>. From <t1><t0><t1><tdot><t8> to <t1><t2><t2><tdot><t3>.",
+  "gt": [
+   [
+    82.1,
+    102.8
+   ],
+   [
+    54.4,
+    68.2
+   ],
+   [
+    185.1,
+    188.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.6666666666666667,
+   "global": 0.02628070825528478,
+   "local": 0.31652954964470015,
+   "precision": 0.02631578947368421
+  }
+ },
+ {
+  "completion": "From <t1><t1><t0><tdot><t3> to <t1><t1><t0><tdot><t4>. From <t1><t0><t8><tdot><t4> to <t1><t4><t1><tdot><t0>.",
+  "gt": [
+   [
+    198.1,
+    228.2
+   ],
+   [
+    57.1,
+    71.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.19791624251801782,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t5><t2><tdot><t2> to <t0><t8><t5><tdot><t7>.",
+  "gt": [
+   [
+    52.9,
+    87.1
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9689802690646212,
+   "local": 0.9699140401146134,
+   "precision": 0.9791044776119404
+  }
+ },
+ {
+  "completion": "From <t0><t0><t4><tdot><t0> to <t0><t3><t7><tdot><t7>. From <t0><t1><t9><tdot><t4> to <t0><t2><t8><tdot><t4>. From <t0><t7><t5><tdot><t1> to <t0><t8><t4><tdot><t8>. From <t0><t0><t5><tdot><t0> to <t0><t4><t2><tdot><t7>.",
+  "gt": [
+   [
+    3.1,
+    36.0
+   ],
+   [
+    22.1,
+    28.6
+   ],
+   [
+    76.9,
+    84.2
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.75,
+   "global": 0.9631961150244581,
+   "local": 0.670276927451595,
+   "precision": 0.81198347107438
+  }
+ },
+ {
+  "completion": "Answer: From <t1><t8><t8><tdot><t7> to <t2><t0><t2><tdot><t8>. From <t0><t1><t4><tdot><t4> to <t0><t4><t6><tdot><t6>.",
+  "gt": [
+   [
+    187.3,
+    203.2
+   ],
+   [
+    16.5,
+    49.3
+   ],
+   [
+    88.3,
+    102.6
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.6666666666666667,
+   "global": 0.8087826624727035,
+   "local": 0.6248761060352134,
+   "precision": 0.9546436285097192
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    115.2,
+    154.0
+   ],
+   [
+    29.1,
+    58.0
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t8><t7><tdot><t1> to <t1><t9><t8><tdot><t4>. From <t1><t2><t4><tdot><t5> to <t1><t5><t7><tdot><t0>. From <t1><t4><t1><tdot><t5> to <t1><t7><t1><tdot><t2>.",
+  "gt": [
+   [
+    189.3,
+    199.0
+   ],
+   [
+    123.3,
+    159.8
+   ],
+   [
+    142.3,
+    173.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 1.0843190206708908,
+   "local": 0.9273203121172648,
+   "precision": 0.9620689655172411
+  }
+ },
+ {
+  "completion": "Answer: From <t0><t8><t6><tdot><t9> to <t1><t2><t2><tdot><t1>. From <t1><t8><t4><tdot><t9> to <t2><t1><t9><tdot><t3>. From <t0><t8><t7><tdot><t9> to <t1><t2><t7><tdot><t1>.",
+  "gt": [
+   [
+    85.2,
+    119.6
+   ],
+   [
+    185.1,
+    221.2
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.6666666666666667,
+   "global": 0.9221221617072334,
+   "local": 0.6380546036865329,
+   "precision": 0.8967828418230565
+  }
+ },
+ {
+  "completion": "From <t1><t1><t1><tdot><t4> to <t1><t4><t6><tdot><t2>.",
+  "gt": [
+   [
+    38.8,
+    57.5
+   ],
+   [
+    142.7,
+    163.4
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.09433912202295787,
+   "local": 0.2668269230769231,
+   "precision": 0.1005747126436782
+  }
+ },
+ {
+  "completion": "From <t0><t1><t5><tdot><t0> to <t0><t4><t3><tdot><t0>. From <t0><t1><t6><tdot><t0> to <t0><t4><t8><tdot><t0>.",
+  "gt": [
+   [
+    14.2,
+    43.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.5,
+   "global": 0.9183994721794715,
+   "local": 0.4872881355932203,
+   "precision": 0.8696969696969697
+  }
+ },
+ {
+  "completion": "From <t0><t6><t3><tdot><t2> to <t0><t6><t3><tdot><t3>. From <t1><t3><t8><tdot><t9> to <t1><t3><t5><tdot><t9>. From <t1><t1><t6><tdot><t8> to <t1><t4><t4><tdot><t3>.",
+  "gt": [
+   [
+    138.9,
+    156.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.5,
+   "global": 0.23788497537404485,
+   "local": 0.047860962566844856,
+   "precision": 0.19565217391304363
+  }
+ },
+ {
+  "completion": "Answer: ",
+  "gt": [
+   [
+    84.7,
+    114.3
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t8><t2><tdot><t2> to <t1><t0><t8><tdot><t2>. From <t0><t9><t3><tdot><t8> to <t1><t0><t5><tdot><t9>. From <t0><t5><t1><tdot><t3> to <t0><t5><t1><tdot><t4>.",
+  "gt": [
+   [
+    152.5,
+    166.8
+   ],
+   [
+    80.9,
+    83.0
+   ],
+   [
+    185.7,
+    218.1
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.021361361119522478,
+   "local": 0.2642986649367846,
+   "precision": 0.030651340996168473
+  }
+ },
+ {
+  "completion": "From <t1><t0><t0><tdot><t7> to <t1><t2><t6><tdot><t5>.",
+  "gt": [
+   [
+    182.7,
+    196.0
+   ],
+   [
+    90.6,
+    113.9
+   ],
+   [
+    185.2,
+    207.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.31095363320030417,
+   "local": 0.22794800371402044,
+   "precision": 0.5116279069767443
+  }
+ },
+ {
+  "completion": "From <t0><t5><t4><tdot><t8> to <t0><t5><t1><tdot><t8>. From <t1><t9><t4><tdot><t1> to <t1><t9><t1><tdot><t1>.",
+  "gt": [
+   [
+    52.1,
+    71.9
+   ],
+   [
+    6.7,
+    31.9
+   ],
+   [
+    58.1,
+    91.9
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t9><t5><tdot><t1> to <t1><t2><t2><tdot><t2>. From <t0><t9><t6><tdot><t1> to <t1><t2><t7><tdot><t2>.",
+  "gt": [
+   [
+    93.2,
+    124.6
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.5,
+   "global": 0.9291333290646882,
+   "local": 0.46576433121019123,
+   "precision": 0.9190031152647973
+  }
+ },
+ {
+  "completion": "From <t0><t5><t2><tdot><t3> to <t0><t5><t6><tdot><t1>.",
+  "gt": [
+   [
+    50.5,
+    56.8
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.7524746291543154,
+   "local": 0.8015873015873021,
+   "precision": 1.0
+  }
+ },
+ {
+  "completion": "From <t0><t7><t0><tdot><t5> to <t0><t9><t4><tdot><t8>.",
+  "gt": [
+   [
+    31.8,
+    55.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.376984126984127,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    65.2,
+    99.5
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t2><t2><tdot><t5> to <t0><t2><t6><tdot><t5>. From <t1><t7><t4><tdot><t0> to <t1><t7><t4><tdot><t3>.",
+  "gt": [
+   [
+    19.9,
+    23.8
+   ],
+   [
+    174.2,
+    176.6
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.2641504113572415,
+   "local": 0.5588578088578111,
+   "precision": 0.3255813953488418
+  }
+ },
+ {
+  "completion": "From <t1><t7><t4><tdot><t4> to <t1><t7><t4><tdot><t5>.",
+  "gt": [
+   [
+    101.9,
+    137.4
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.24517906336088152,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t6><t5><tdot><t7> to <t0><t9><t0><tdot><t7>.",
+  "gt": [
+   [
+    55.0,
+    70.2
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.2238801155921837,
+   "local": 0.5630252100840336,
+   "precision": 0.18
+  }
+ },
+ {
+  "completion": "From <t0><t4><t7><tdot><t0> to <t0><t7><t9><tdot><t3>.",
+  "gt": [
+   [
+    46.0,
+    79.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9787873493528731,
+   "local": 0.9792284866468841,
+   "precision": 1.0
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    105.5,
+    134.3
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t7><t5><tdot><t2> to <t0><t8><t5><tdot><t4>.",
+  "gt": [
+   [
+    75.2,
+    85.8
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9807686366496726,
+   "local": 0.9811320754716986,
+   "precision": 1.0
+  }
+ },
+ {
+  "completion": "From <t0><t2><t2><tdot><t7> to <t0><t2><t3><tdot><t1>. From <t0><t8><t0><tdot><t2> to <t0><t8><t7><tdot><t2>.",
+  "gt": [
+   [
+    20.0,
+    24.8
+   ],
+   [
+    81.0,
+    86.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.627906413467128,
+   "local": 0.6994047619047621,
+   "precision": 0.7297297297297298
+  }
+ },
+ {
+  "completion": "From <t0><t0><t6><tdot><t4> to <t0><t1><t6><tdot><t0>.",
+  "gt": [
+   [
+    6.2,
+    16.9
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9458122161666431,
+   "local": 0.9485981308411215,
+   "precision": 1.0
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    139.6,
+    150.4
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t6><t7><tdot><t8> to <t0><t6><t7><tdot><t9>. From <t0><t6><t8><tdot><t6> to <t0><t9><t2><tdot><t4>.",
+  "gt": [
+   [
+    137.6,
+    152.7
+   ],
+   [
+    162.5,
+    170.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.12277620383502619,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t4><t9><tdot><t9> to <t1><t6><t0><tdot><t9>. From <t0><t7><t1><tdot><t3> to <t0><t7><t6><tdot><t9>. From <t1><t6><t2><tdot><t4> to <t1><t9><t6><tdot><t4>.",
+  "gt": [
+   [
+    150.8,
+    162.2
+   ],
+   [
+    70.7,
+    74.2
+   ],
+   [
+    160.9,
+    194.8
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9134803670962099,
+   "local": 0.8669260338673356,
+   "precision": 0.8972332015810276
+  }
+ },
+ {
+  "completion": "From <t0><t9><t8><tdot><t8> to <t1><t1><t5><tdot><t5>. From <t1><t8><t4><tdot><t1> to <t2><t2><t0><tdot><t2>.",
+  "gt": [
+   [
+    79.7,
+    80.4
+   ],
+   [
+    79.4,
+    108.8
+   ],
+   [
+    41.5,
+    78.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.6666666666666667,
+   "global": 0.16750369147950184,
+   "local": 0.2805459662763955,
+   "precision": 0.1893939393939394
+  }
+ },
+ {
+  "completion": "From <t1><t9><t3><tdot><t8> to <t2><t2><t4><tdot><t9>. From <t1><t7><t2><tdot><t2> to <t1><t8><t2><tdot><t5>. From <t1><t9><t4><tdot><t8> to <t2><t2><t9><tdot><t9>.",
+  "gt": [
+   [
+    193.7,
+    225.0
+   ],
+   [
+    172.1,
+    184.2
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.6666666666666667,
+   "global": 0.9242756492381213,
+   "local": 0.6408083155106102,
+   "precision": 0.8943965517241378
+  }
+ },
+ {
+  "completion": "From <t0><t9><t8><tdot><t7> to <t1><t1><t1><tdot><t3>.",
+  "gt": [
+   [
+    99.4,
+    110.3
+   ],
+   [
+    58.0,
+    90.1
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.3920859663063948,
+   "local": 0.46626984126984117,
+   "precision": 0.8650793650793648
+  }
+ },
+ {
+  "completion": "Answer: From <t1><t8><t1><tdot><t6> to <t1><t9><t2><tdot><t0>.",
+  "gt": [
+   [
+    179.0,
+    194.7
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 1.0,
+   "global": 0.7969343254505923,
+   "local": 0.8312101910828029,
+   "precision": 1.0
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    191.2,
+    216.4
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t0><t1><tdot><t0> to <t1><t4><t3><tdot><t7>.",
+  "gt": [
+   [
+    103.8,
+    141.3
+   ],
+   [
+    48.2,
+    52.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.8928566217378091,
+   "local": 0.46955503512880575,
+   "precision": 0.878220140515223
+  }
+ },
+ {
+  "completion": "Answer: ",
+  "gt": [
+   [
+    170.4,
+    187.8
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t7><t3><tdot><t6> to <t1><t9><t6><tdot><t5>. From <t1><t8><t2><tdot><t0> to <t1><t8><t7><tdot><t4>. From <t0><t5><t8><tdot><t4> to <t0><t9><t9><tdot><t3>. From <t1><t7><t4><tdot><t6> to <t2><t0><t1><tdot><t5>.",
+  "gt": [
+   [
+    174.1,
+    196.0
+   ],
+   [
+    181.5,
+    186.4
+   ],
+   [
+    57.6,
+    97.1
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.75,
+   "global": 0.9696515953653709,
+   "local": 0.7037690179438124,
+   "precision": 0.880813953488372
+  }
+ },
+ {
+  "completion": "From <t1><t7><t1><tdot><t5> to <t2><t0><t4><tdot><t1>. From <t0><t8><t3><tdot><t4> to <t0><t9><t7><tdot><t5>. From <t0><t5><t1><tdot><t0> to <t0><t5><t3><tdot><t6>.",
+  "gt": [
+   [
+    173.4,
+    205.6
+   ],
+   [
+    83.8,
+    99.9
+   ],
+   [
+    51.1,
+    51.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9164964263528269,
+   "local": 0.8268942527007045,
+   "precision": 0.9127789046653144
+  }
+ },
+ {
+  "completion": "From <t0><t1><t4><tdot><t5> to <t0><t4><t5><tdot><t9>.",
+  "gt": [
+   [
+    110.2,
+    133.1
+   ],
+   [
+    59.4,
+    88.6
+   ],
+   [
+    68.0,
+    78.6
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.13630229419703102,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t0><t9><tdot><t0> to <t1><t3><t7><tdot><t2>. From <t0><t4><t6><tdot><t6> to <t0><t6><t0><tdot><t0>. From <t0><t0><t1><tdot><t6> to <t0><t0><t1><tdot><t8>.",
+  "gt": [
+   [
+    106.2,
+    135.2
+   ],
+   [
+    44.1,
+    60.6
+   ],
+   [
+    3.6,
+    4.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.8999994807957313,
+   "local": 0.6651026392961876,
+   "precision": 0.9473684210526315
+  }
+ },
+ {
+  "completion": "From <t0><t4><t1><tdot><t2> to <t0><t6><t0><tdot><t3>. From <t1><t6><t3><tdot><t4> to <t1><t7><t5><tdot><t8>.",
+  "gt": [
+   [
+    38.4,
+    62.4
+   ],
+   [
+    164.2,
+    174.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.8936164950206509,
+   "local": 0.906619623655914,
+   "precision": 0.9333333333333335
+  }
+ },
+ {
+  "completion": "From <t1><t0><t6><tdot><t3> to <t1><t0><t6><tdot><t8>.",
+  "gt": [
+   [
+    107.4,
+    108.8
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.3799999999999983,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t5><t5><tdot><t1> to <t0><t6><t0><tdot><t5>. From <t0><t5><t1><tdot><t4> to <t0><t5><t2><tdot><t7>.",
+  "gt": [
+   [
+    52.4,
+    61.3
+   ],
+   [
+    52.3,
+    54.5
+   ],
+   [
+    6.6,
+    13.2
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.6666666666666667,
+   "global": 0.4999995606358866,
+   "local": 0.45596230518303765,
+   "precision": 0.865671641791045
+  }
+ },
+ {
+  "completion": "From <t1><t5><t4><tdot><t5> to <t1><t7><t1><tdot><t6>.",
+  "gt": [
+   [
+    157.0,
+    171.6
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9211350916819478,
+   "local": 0.9269005847953216,
+   "precision": 0.8538011695906432
+  }
+ },
+ {
+  "completion": "From <t0><t8><t4><tdot><t7> to <t0><t9><t9><tdot><t7>. From <t1><t4><t4><tdot><t0> to <t1><t7><t4><tdot><t6>.",
+  "gt": [
+   [
+    67.4,
+    68.1
+   ],
+   [
+    137.6,
+    162.4
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.5175803974121864,
+   "local": 0.2010510310417027,
+   "precision": 0.40350877192982476
+  }
+ },
+ {
+  "completion": "From <t0><t5><t9><tdot><t8> to <t0><t6><t1><tdot><t4>. From <t1><t8><t9><tdot><t5> to <t2><t0><t1><tdot><t2>.",
+  "gt": [
+   [
+    57.8,
+    62.1
+   ],
+   [
+    191.3,
+    198.2
+   ],
+   [
+    67.4,
+    82.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.6666666666666667,
+   "global": 0.431471612087861,
+   "local": 0.49363943549990036,
+   "precision": 0.6390977443609012
+  }
+ },
+ {
+  "completion": "From <t0><t4><t5><tdot><t9> to <t0><t5><t0><tdot><t5>.",
+  "gt": [
+   [
+    44.0,
+    48.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.53932522206841,
+   "local": 0.6846153846153845,
+   "precision": 0.5217391304347822
+  }
+ },
+ {
+  "completion": "From <t0><t0><t6><tdot><t1> to <t0><t1><t8><tdot><t5>. From <t0><t0><t7><tdot><t1> to <t0><t2><t3><tdot><t5>.",
+  "gt": [
+   [
+    7.5,
+    15.8
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.5,
+   "global": 0.6459139093100452,
+   "local": 0.4173387096774194,
+   "precision": 0.47701149425287365
+  }
+ },
+ {
+  "completion": "From <t0><t1><t3><tdot><t5> to <t0><t1><t3><tdot><t6>.",
+  "gt": [
+   [
+    10.9,
+    23.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.015503858181464979,
+   "local": 0.50390625,
+   "precision": 1.0
+  }
+ },
+ {
+  "completion": "From <t0><t8><t3><tdot><t3> to <t1><t1><t4><tdot><t7>. From <t1><t6><t9><tdot><t7> to <t1><t6><t6><tdot><t7>. From <t1><t6><t0><tdot><t7> to <t1><t5><t7><tdot><t7>.",
+  "gt": [
+   [
+    14.6,
+    22.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.19730269730269734,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t0><t9><tdot><t7> to <t1><t4><t8><tdot><t3>.",
+  "gt": [
+   [
+    180.0,
+    204.6
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.332982086406744,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t8><t6><tdot><t7> to <t1><t0><t9><tdot><t2>. From <t1><t4><t2><tdot><t1> to <t1><t3><t9><tdot><t1>.",
+  "gt": [
+   [
+    71.1,
+    82.6
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.4461942257217847,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t6><t0><tdot><t1> to <t1><t7><t9><tdot><t4>.",
+  "gt": [
+   [
+    159.0,
+    176.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.8972967497300095,
+   "local": 0.9068627450980389,
+   "precision": 0.8601036269430044
+  }
+ },
+ {
+  "completion": "From <t0><t9><t2><tdot><t7> to <t0><t9><t2><tdot><t8>. From <t1><t1><t4><tdot><t6> to <t1><t1><t4><tdot><t7>. From <t0><t4><t0><tdot><t2> to <t0><t4><t0><tdot><t3>.",
+  "gt": [
+   [
+    10.5,
+    47.2
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.33333333333333337,
+   "global": 0.005405389028483205,
+   "local": 0.07452409882543538,
+   "precision": 0.33333333333331755
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    121.8,
+    133.5
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "Answer: From <t1><t0><t3><tdot><t1> to <t1><t2><t9><tdot><t0>. From <t0><t7><t4><tdot><t6> to <t1><t0><t1><tdot><t6>. From <t1><t0><t4><tdot><t1> to <t1><t3><t4><tdot><t0>.",
+  "gt": [
+   [
+    102.4,
+    129.4
+   ],
+   [
+    60.1,
+    88.9
+   ],
+   [
+    75.1,
+    100.7
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 1.0,
+   "global": 0.9504661193922038,
+   "local": 0.7836206752535126,
+   "precision": 0.905008635578584
+  }
+ },
+ {
+  "completion": "From <t0><t0><t3><tdot><t0> to <t0><t2><t6><tdot><t3>. From <t0><t9><t4><tdot><t1> to <t1><t2><t0><tdot><t1>.",
+  "gt": [
+   [
+    189.4,
+    226.7
+   ],
+   [
+    3.4,
+    23.5
+   ],
+   [
+    97.1,
+    119.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.6666666666666667,
+   "global": 0.6563222482439668,
+   "local": 0.6194178496753604,
+   "precision": 0.8580121703853957
+  }
+ },
+ {
+  "completion": "From <t0><t8><t7><tdot><t7> to <t0><t8><t7><tdot><t8>.",
+  "gt": [
+   [
+    129.4,
+    142.4
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.11974405850091402,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t6><t7><tdot><t7> to <t1><t6><t4><tdot><t7>. From <t1><t0><t6><tdot><t0> to <t1><t0><t6><tdot><t1>.",
+  "gt": [
+   [
+    198.7,
+    214.3
+   ],
+   [
+    18.6,
+    24.0
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.036241920590951104,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t8><t5><tdot><t8> to <t2><t1><t8><tdot><t9>.",
+  "gt": [
+   [
+    47.3,
+    68.7
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.0,
+   "local": 0.15879953379953377,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    151.9,
+    188.2
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t1><t4><t9><tdot><t9> to <t1><t7><t7><tdot><t1>.",
+  "gt": [
+   [
+    151.8,
+    176.9
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9598465004298317,
+   "local": 0.9613970588235294,
+   "precision": 0.922794117647059
+  }
+ },
+ {
+  "completion": "",
+  "gt": [
+   [
+    158.3,
+    187.0
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "Answer: From <t0><t7><t3><tdot><t2> to <t0><t8><t4><tdot><t9>. From <t0><t7><t1><tdot><t2> to <t1><t0><t4><tdot><t7>.",
+  "gt": [
+   [
+    90.4,
+    120.4
+   ],
+   [
+    178.6,
+    197.4
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 1.0,
+   "global": 0.3475086218373253,
+   "local": 0.32447403234037986,
+   "precision": 0.42686567164179096
+  }
+ },
+ {
+  "completion": "From <t1><t5><t8><tdot><t3> to <t1><t9><t2><tdot><t6>. From <t0><t5><t8><tdot><t4> to <t0><t6><t6><tdot><t7>. From <t1><t4><t9><tdot><t8> to <t1><t8><t1><tdot><t7>.",
+  "gt": [
+   [
+    159.3,
+    189.8
+   ],
+   [
+    61.3,
+    68.6
+   ],
+   [
+    147.0,
+    184.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 1.1170881082473332,
+   "local": 0.8782152098934813,
+   "precision": 0.8884540117416833
+  }
+ },
+ {
+  "completion": "From <t0><t4><t8><tdot><t6> to <t0><t8><t8><tdot><t8>.",
+  "gt": [
+   [
+    192.8,
+    221.7
+   ],
+   [
+    50.0,
+    86.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.6912873941692833,
+   "local": 0.4769900497512438,
+   "precision": 0.9079601990049753
+  }
+ },
+ {
+  "completion": "Answer: ",
+  "gt": [
+   [
+    138.5,
+    168.7
+   ],
+   [
+    45.9,
+    69.4
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "Answer: From <t1><t9><t9><tdot><t8> to <t1><t9><t9><tdot><t9>.",
+  "gt": [
+   [
+    195.5,
+    214.8
+   ]
+  ],
+  "expected": {
+   "format": 0.0,
+   "count": 1.0,
+   "global": 0.010309267031474268,
+   "local": 0.5025906735751294,
+   "precision": 1.0
+  }
+ },
+ {
+  "completion": "From <t1><t0><t9><tdot><t2> to <t1><t4><t7><tdot><t5>.",
+  "gt": [
+   [
+    111.4,
+    146.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9535513875939494,
+   "local": 0.9556135770234988,
+   "precision": 0.9112271540469976
+  }
+ },
+ {
+  "completion": "From <t1><t2><t2><tdot><t2> to <t1><t5><t2><tdot><t3>.",
+  "gt": [
+   [
+    121.6,
+    149.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 0.9377157313911744,
+   "local": 0.9413680781758957,
+   "precision": 0.9003322259136213
+  }
+ },
+ {
+  "completion": "From <t0><t6><t1><tdot><t9> to <t0><t6><t2><tdot><t0>. From <t1><t5><t1><tdot><t1> to <t1><t5><t1><tdot><t2>.",
+  "gt": [
+   [
+    12.8,
+    31.3
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.5,
+   "global": 0.0,
+   "local": 0.09451219512195122,
+   "precision": 0.0
+  }
+ },
+ {
+  "completion": "From <t0><t3><t6><tdot><t9> to <t0><t5><t1><tdot><t1>. From <t0><t6><t0><tdot><t1> to <t0><t8><t9><tdot><t7>.",
+  "gt": [
+   [
+    37.1,
+    48.2
+   ],
+   [
+    62.3,
+    90.3
+   ],
+   [
+    10.6,
+    13.5
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.6666666666666667,
+   "global": 0.8974353767369845,
+   "local": 0.6148291515094986,
+   "precision": 0.8789954337899544
+  }
+ },
+ {
+  "completion": "From <t0><t3><t4><tdot><t4> to <t0><t4><t7><tdot><t6>. From <t0><t1><t6><tdot><t3> to <t0><t5><t6><tdot><t0>.",
+  "gt": [
+   [
+    36.7,
+    45.8
+   ],
+   [
+    18.1,
+    54.2
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 1.0,
+   "global": 1.064781573599604,
+   "local": 0.8996784596595677,
+   "precision": 0.9093198992443324
+  }
+ },
+ {
+  "completion": "From <t1><t2><t3><tdot><t6> to <t1><t2><t0><tdot><t6>.",
+  "gt": [
+   [
+    86.3,
+    100.9
+   ]
+  ],
+  "expected": {
+   "format": 1.0,
+   "count": 0.0,
+   "global": 0.0,
+   "local": 0.0,
+   "precision": 0.0
+  }
+ }
+]
