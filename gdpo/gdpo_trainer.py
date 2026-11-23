@@ -8,9 +8,8 @@ policy optimization (GDPO): each reward channel is normalized within its rollout
 group before the channels are combined into one advantage.
 
 Main features (all controlled by the YAML config or CLI flags):
-  - Reward channels are defined by --reward_module. The paper uses
-    reward_functions_rM_sep3 with five channels: format, count, global, local,
-    precision.
+  - Reward channels are defined by --reward_module. The paper uses gdpo/rewards.py
+    with five channels: format, count, global, local, precision.
   - Clip-higher clipped surrogate (DAPO): -min(r*A, clip(r, 1-eps_low, 1+eps_high)*A).
     It only binds when clip.num_iterations (mu) > 1, i.e. when one rollout is
     reused for mu policy updates.
@@ -30,7 +29,7 @@ Training paths (chosen automatically from --model_path):
       The paper uses path (B).
 
 Usage (see gdpo/scripts/train_gdpo.sh for the paper run):
-  torchrun --standalone --nproc_per_node=1 gdpo/gdpo_trainer.py       --config        gdpo/configs/titok_gdpo.yaml       --model_path    $CKPT_DIR/base/salmonn2p_7b_unav_v8       --model_base    $CKPT_DIR/base/salmonn2p_7b_unav_v8       --dataset_path  $DATA_DIR/gdpo/train.json       --reward_module reward_functions_rM_sep3 --tti_mode on       --output_dir    $CKPT_DIR/gdpo/titok_gdpo
+  torchrun --standalone --nproc_per_node=1 gdpo/gdpo_trainer.py       --config        gdpo/configs/titok_gdpo.yaml       --model_path    $CKPT_DIR/base/salmonn2p_7b_unav_v8       --model_base    $CKPT_DIR/base/salmonn2p_7b_unav_v8       --dataset_path  $DATA_DIR/gdpo/train.json       --reward_module rewards --tti_mode on       --output_dir    $CKPT_DIR/gdpo/titok_gdpo
 
 CLI arguments (CLI > YAML config > built-in defaults):
   --config                  YAML config; ${VAR} values are expanded from the environment.
@@ -103,7 +102,7 @@ def load_reward_module(module_name: str):
     """Dynamically load a reward module and return its channel spec [(name, fn, needs_gt), ...].
 
     The module must define REWARD_CHANNELS = [(name:str, fn:callable, needs_gt:bool), ...];
-    it fully decides channel count, names and order, e.g. reward_functions_rM_sep3 ->
+    it fully decides channel count, names and order, e.g. rewards ->
     [format, count, global, local, precision]. needs_gt=True calls fn(completion, gt),
     False calls fn(completion).
 
@@ -119,7 +118,7 @@ def load_reward_module(module_name: str):
     if raw is None:
         raise ValueError(
             f"[GDPO] reward module '{module_name}' does not define REWARD_CHANNELS "
-            f"(expected a list of (name, fn, needs_gt) tuples, see reward_functions_rM_sep3.py)")
+            f"(expected a list of (name, fn, needs_gt) tuples, see gdpo/rewards.py)")
     specs = []
     for ch in raw:
         if not (isinstance(ch, (tuple, list)) and len(ch) == 3):
@@ -624,7 +623,7 @@ class GDPOTrainer(Trainer):
             second_per_grid_ts = second_per_grid_ts.to(device)
 
         # GT for the rewards: time segments parsed from the gpt answer
-        from reward_functions import decode_vtg_time
+        from rewards import decode_vtg_time
         gt_intervals = []
         raw_labels = inputs.get("labels", None)
         if raw_labels is not None:
@@ -1564,8 +1563,8 @@ def main():
                         help="TTI mode. off = ignore time_token_id_range / on = keep the base config. "
                              "Default: config.model.tti_mode or 'off'.")
     parser.add_argument("--reward_module", type=str, default=None,
-                        help="reward function module (paper: reward_functions_rM_sep3). "
-                             "Default: config.reward.module or reward_functions.")
+                        help="reward module name on gdpo/ (paper: rewards). "
+                             "Default: config.reward.module or rewards.")
     parser.add_argument("--resume_from_checkpoint", type=str, default=None,
                         help="'True' = resume from the latest checkpoint in output_dir, or a checkpoint path. "
                              "Unset = start from scratch.")
@@ -1819,7 +1818,7 @@ def main():
         print("[GDPO][VAL] WARNING: val.enabled but no val_path; validation disabled")
 
     # Reward: select the module (one trainer, only the import target changes)
-    reward_module = _get(cli.reward_module, "reward", "module", default="reward_functions")
+    reward_module = _get(cli.reward_module, "reward", "module", default="rewards")
     _specs = load_reward_module(reward_module)
     reward_funcs = make_reward_functions(_specs)
     _chan_names = [n for n, _, _ in _specs]

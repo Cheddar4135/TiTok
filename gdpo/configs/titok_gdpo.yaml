@@ -67,7 +67,7 @@ logging:
   run_name: null
 
 reward:
-  module: reward_functions_rM_sep3     # 5 channels: format, count, global, local, precision
+  module: rewards                      # gdpo/rewards.py: format, count, global, local, precision
 
 ref_model:
   enabled: true

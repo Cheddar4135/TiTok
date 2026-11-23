@@ -40,7 +40,7 @@ torchrun --standalone --nproc_per_node=1 --master_port="$MASTER_PORT" \
     --model_path    "$SFT_CKPT" \
     --model_base    "$SFT_CKPT" \
     --dataset_path  "$DATASET" \
-    --reward_module reward_functions_rM_sep3 \
+    --reward_module rewards \
     --tti_mode on \
     --output_dir    "$OUT" \
     --run_name      "$RUN" \
