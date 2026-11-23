@@ -81,6 +81,5 @@ val:
       dataset_path: ${DATA_DIR}/gdpo/val_charades.json   # Charades-STA has no audio track (use_audio=false)
   max_new_tokens: 256
   max_time: 999.9
-  natural: false
   # Top-level combined/seg_miou/f1_avg in val_metrics.jsonl = mean over (unav, charades).
   # Per-set values: sets.{unav,charades} and W&B val_unav/*, val_charades/*.

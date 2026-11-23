@@ -102,17 +102,10 @@ sys.path.insert(0, _THIS_DIR)
 def load_reward_module(module_name: str):
     """Dynamically load a reward module and return its channel spec [(name, fn, needs_gt), ...].
 
-    Two supported module conventions:
-        (1) REWARD_CHANNELS (recommended; any number of channels)
-                    If the module defines REWARD_CHANNELS = [(name:str, fn:callable, needs_gt:bool), ...],
-                    it is used as is; the module fully decides channel count, names and order.
-                    e.g. reward_functions_rM_sep3 -> [format, count, global, local, precision]
-                    (needs_gt=True calls fn(completion, gt), False calls fn(completion).)
-        (2) naming convention (legacy)
-                    Without REWARD_CHANNELS, channels are assembled from function names:
-                        required: format_reward, iou_reward
-                        optional: timestamp_reward, modality_reward (ignored if missing)
-                    e.g. reward_functions
+    The module must define REWARD_CHANNELS = [(name:str, fn:callable, needs_gt:bool), ...];
+    it fully decides channel count, names and order, e.g. reward_functions_rM_sep3 ->
+    [format, count, global, local, precision]. needs_gt=True calls fn(completion, gt),
+    False calls fn(completion).
 
     The trainer works with any returned spec:
         - reward_weights are resized to the number of channels in main()
@@ -122,30 +115,23 @@ def load_reward_module(module_name: str):
     import importlib
     mod = importlib.import_module(module_name)
 
-    # (1) the module declares its channel spec: use it as is
     raw = getattr(mod, "REWARD_CHANNELS", None)
-    if raw is not None:
-        specs = []
-        for ch in raw:
-            if not (isinstance(ch, (tuple, list)) and len(ch) == 3):
-                raise ValueError(
-                    f"[GDPO] {module_name}.REWARD_CHANNELS entries must be (name, fn, needs_gt) "
-                    f"3-tuples: {ch!r}")
-            name, fn, needs_gt = ch
-            if not callable(fn):
-                raise ValueError(f"[GDPO] fn of reward channel '{name}' is not callable: {fn!r}")
-            specs.append((str(name), fn, bool(needs_gt)))
-        if not specs:
-            raise ValueError(f"[GDPO] {module_name}.REWARD_CHANNELS is empty")
-        return specs
-
-    # (2) legacy naming-convention fallback
-    specs = [("format", mod.format_reward, False),   # (name, fn, needs_gt)
-             ("iou", mod.iou_reward, True)]
-    for name in ("timestamp", "modality"):  # optional (CoT)
-        fn = getattr(mod, f"{name}_reward", None)
-        if fn is not None:
-            specs.append((name, fn, True))
+    if raw is None:
+        raise ValueError(
+            f"[GDPO] reward module '{module_name}' does not define REWARD_CHANNELS "
+            f"(expected a list of (name, fn, needs_gt) tuples, see reward_functions_rM_sep3.py)")
+    specs = []
+    for ch in raw:
+        if not (isinstance(ch, (tuple, list)) and len(ch) == 3):
+            raise ValueError(
+                f"[GDPO] {module_name}.REWARD_CHANNELS entries must be (name, fn, needs_gt) "
+                f"3-tuples: {ch!r}")
+        name, fn, needs_gt = ch
+        if not callable(fn):
+            raise ValueError(f"[GDPO] fn of reward channel '{name}' is not callable: {fn!r}")
+        specs.append((str(name), fn, bool(needs_gt)))
+    if not specs:
+        raise ValueError(f"[GDPO] {module_name}.REWARD_CHANNELS is empty")
     return specs
 
 RewardFunc = Union[str, PreTrainedModel, Callable[[list, list], list[float]]]
@@ -837,10 +823,8 @@ class GDPOTrainer(Trainer):
             )
 
             def _answer_tuples(text):
-                m = re.search(r"<answer>(.*?)</answer>", text, re.S)
-                ans = m.group(1) if m else text
                 segs = []
-                for s_str, e_str in _SEG_CAPTURE_DEBUG.findall(ans):
+                for s_str, e_str in _SEG_CAPTURE_DEBUG.findall(text):
                     s = decode_vtg_time(s_str)
                     e = decode_vtg_time(e_str)
                     if s is not None and e is not None:
@@ -1249,12 +1233,6 @@ def _val_parse_tokens(text, max_time):
     return out
 
 
-def _val_extract_answer_scope(text):
-    """CoT: only the content of <answer>...</answer> (the whole text if absent)."""
-    spans = re.findall(r"<answer>(.*?)</answer>", text or "", re.DOTALL | re.IGNORECASE)
-    return " ".join(spans) if spans else (text or "")
-
-
 def _val_tiou(a, b):
     s = max(a[0], b[0]); e = min(a[1], b[1])
     inter = max(0.0, e - s)
@@ -1445,13 +1423,12 @@ class ValEvalCallback(transformers.TrainerCallback):
     """
 
     def __init__(self, trainer, val_sets, out_dir,
-                 max_new_tokens=256, max_time=999.9, natural=False):
+                 max_new_tokens=256, max_time=999.9):
         # val_sets: list of (name, LazySupervisedDataset)
         self.trainer = trainer
         self.out_dir = out_dir
         self.max_new_tokens = int(max_new_tokens)
         self.max_time = float(max_time)
-        self.natural = bool(natural)
         self.jsonl_path = os.path.join(out_dir, "val_metrics.jsonl")
         # GT of each set: LazySupervisedDataset shuffles list_data_dict (dataset.py), so read
         # gt_segments in the shuffled order to keep predictions and GT aligned.
@@ -1479,8 +1456,7 @@ class ValEvalCallback(transformers.TrainerCallback):
             inst = ds[i]
             batch = trainer.data_collator([inst])
             text = _val_greedy_generate(trainer, batch, self.max_new_tokens)
-            scope = _val_extract_answer_scope(text) if self.natural else text
-            pred = _val_parse_tokens(scope, self.max_time)
+            pred = _val_parse_tokens(text, self.max_time)
             local.append({"idx": i, "gt": gt_list[i], "pred": pred})
         gathered = gather_object(local)   # collective: every rank must call it
         if not acc.is_main_process:
@@ -1847,8 +1823,7 @@ def main():
     _specs = load_reward_module(reward_module)
     reward_funcs = make_reward_functions(_specs)
     _chan_names = [n for n, _, _ in _specs]
-    print(f"[GDPO] reward_module={reward_module}  channels={_chan_names} "
-          f"(iou implementation={getattr(_specs[1][1], '__name__', '?')})")
+    print(f"[GDPO] reward_module={reward_module}  channels={_chan_names}")
     # Resize reward_weights to the number of channels
     if len(reward_weights) != len(reward_funcs):
         if len(reward_weights) > len(reward_funcs):
@@ -1929,14 +1904,12 @@ def main():
     if val_sets:
         val_max_new = int(_get(None, "val", "max_new_tokens", default=max_completion_length))
         val_max_time = float(_get(None, "val", "max_time", default=999.9))
-        val_natural = bool(_get(None, "val", "natural", default=False))
         trainer.add_callback(ValEvalCallback(
             trainer=trainer,
             val_sets=val_sets,
             out_dir=output_dir,
             max_new_tokens=val_max_new,
             max_time=val_max_time,
-            natural=val_natural,
         ))
         _names = ", ".join(n for n, _ in val_sets)
         print(f"[GDPO][VAL] ValEvalCallback attached: evaluating every save_steps ({save_steps}) "
