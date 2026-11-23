@@ -1,4 +1,5 @@
 # Copyright (2025) Tsinghua University, Bytedance Ltd. and/or its affiliates
+# Modified by The TiTok Authors (2026) for TiTok; see NOTICE.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
