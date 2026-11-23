@@ -7,15 +7,14 @@ audio.q_tokens is saved in a separate file (audio_q_tokens.safetensors), not in
 adapter_model.safetensors, so it is loaded explicitly and baked into the output.
 
 Usage (from the repo root, after `source scripts/env.sh`):
-    python v8_sft/_tools/merge_v8_unav_to_base.py         --lora_ckpt $CKPT_DIR/sft/titok_sft/checkpoint-250
+    python sft/scripts/merge_lora.py         --lora_ckpt $CKPT_DIR/sft/titok_sft/checkpoint-250
 """
 import argparse
 import os
 import shutil
 import sys
 
-sys.path.insert(0, os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "video_SALMONN2_plus"))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # sft/
 
 import torch
 from peft import PeftModel

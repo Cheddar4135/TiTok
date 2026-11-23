@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-demo_app.py - Gradio demo for TiTok multi-segment audio-visual temporal grounding.
+app.py - Gradio demo for TiTok multi-segment audio-visual temporal grounding.
 
 Upload a video (or give a YouTube URL) and a question; the answer is shown as text and
 the predicted segments on a timeline. Inference reuses the GDPO trainer's model loader
@@ -9,7 +9,7 @@ the predicted segments on a timeline. Inference reuses the GDPO trainer's model 
 
 Usage (GPU machine, from the repo root):
   pip install gradio
-  bash gdpo/run_demo.sh            # TiTok GDPO checkpoint-2000 on top of the SFT model
+  bash demo/run_demo.sh            # TiTok GDPO checkpoint-2000 on top of the SFT model
 
 env:
   DEMO_MODEL_PATH  [required] LoRA adapter or merged model (same as gdpo --model_path)
@@ -39,12 +39,11 @@ _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(_THIS_DIR, ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
-sys.path.insert(0, os.path.join(PROJECT_ROOT, "video_SALMONN2_plus"))
-if _THIS_DIR not in sys.path:
-    sys.path.insert(0, _THIS_DIR)
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "titok"))
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "gdpo"))
 
 # Reuse the GDPO trainer's model loader so the demo loads models exactly as training does.
-from gdpo_trainer_batch import load_model_and_tokenizer
+from gdpo_trainer import load_model_and_tokenizer
 
 from qwenvl.data.dataset import LazySupervisedDataset, DataCollatorForSupervisedDataset
 from qwenvl.data.image_processing_qwen2_vl_fast import Qwen2VLImageProcessorFast
@@ -257,7 +256,7 @@ def extract_audio_from_video(video_path):
 
 
 # ============================================================
-# Data preprocessing args (copy of GDPODataArgs in gdpo_trainer_batch.py main())
+# Data preprocessing args (copy of GDPODataArgs in gdpo/gdpo_trainer.py main())
 #   Values are kept identical so that preprocessing matches training.
 # ============================================================
 @dataclass

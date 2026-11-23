@@ -2,19 +2,19 @@
 # ============================================================
 # TiTok stage 1: SFT (paper setting, 4 GPUs, effective batch 8).
 #
-#   bash v8_sft/_tools/train_v8.sh
-#   EVAL_DATASET=<json> bash v8_sft/_tools/train_v8.sh   # optional held-out loss every 250 steps
+#   bash sft/scripts/train_sft.sh
+#   EVAL_DATASET=<json> bash sft/scripts/train_sft.sh   # optional held-out loss every 250 steps
 #
 # The SFT stage only teaches the time-token output format and audio/video
 # alignment; temporal grounding itself is learned in the GDPO stage.
 #   - data:  UnAV-100 training split (data/sft/unav100_sft.json), 1 epoch
 #   - start: video-SALMONN 2+ 7B with time tokens added
-#            (tools/sft/add_time_tokens_salmonn2plus.py)
+#            (tools/add_time_tokens.py)
 #   - LoRA r=16 / alpha=16 / dropout=0.1 on q,k,v,o to preserve instruction following
 #   - only the time-token rows of embed_tokens / lm_head are trained
 #   - TTI is off during SFT
 # A checkpoint is saved every 250 steps; the paper uses checkpoint-250,
-# merged into the base with v8_sft/_tools/merge_v8_unav_to_base.py.
+# merged into the base with sft/scripts/merge_lora.py.
 # ============================================================
 set -eo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/../../scripts/env.sh"
@@ -44,7 +44,7 @@ else
 fi
 
 mkdir -p "$OUTPUT_DIR"
-cd "$REPO_ROOT/v8_sft/video_SALMONN2_plus"
+cd "$REPO_ROOT/sft"
 
 torchrun --standalone --nproc_per_node="$ARNOLD_WORKER_GPU" --master_port="$MASTER_PORT" \
     qwenvl/train/train_qwen.py \
@@ -82,4 +82,4 @@ torchrun --standalone --nproc_per_node="$ARNOLD_WORKER_GPU" --master_port="$MAST
     2>&1 | tee -a "$OUTPUT_DIR/train.log"
 
 echo "[sft] done. Merge the paper checkpoint with:"
-echo "  python v8_sft/_tools/merge_v8_unav_to_base.py --lora_ckpt $OUTPUT_DIR/checkpoint-250"
+echo "  python sft/scripts/merge_lora.py --lora_ckpt $OUTPUT_DIR/checkpoint-250"

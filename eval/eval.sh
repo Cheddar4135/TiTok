@@ -173,7 +173,7 @@ case "${TTI_TIME_FORMAT:-off}" in
 esac
 EVAL_TAG="fps${FPS_INT}_${FORMAT_TAG}"
 
-BASE_CODE="${REPO_ROOT}/video_SALMONN2_plus"
+BASE_CODE="${REPO_ROOT}/titok"
 MODEL_BASE="${CKPT_DIR}/${BASE_MODEL_ID}"
 
 # ---- Model resolution: MERGED_MODEL > CKPT_STEP=base > base + LoRA ----

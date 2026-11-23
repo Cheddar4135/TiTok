@@ -29,8 +29,8 @@ Training paths (chosen automatically from --model_path):
       set lora.enabled=true. The reference policy is the merged SFT model.
       The paper uses path (B).
 
-Usage (see gdpo/run_rMsep3_uncha_noscaling_1gpu.sh for the paper run):
-  torchrun --standalone --nproc_per_node=1 gdpo/gdpo_trainer_batch.py       --config        gdpo/config_sep3_uncha_1gpu.yaml       --model_path    $CKPT_DIR/base/salmonn2p_7b_unav_v8       --model_base    $CKPT_DIR/base/salmonn2p_7b_unav_v8       --dataset_path  $DATA_DIR/gdpo/train.json       --reward_module reward_functions_rM_sep3 --tti_mode on       --output_dir    $CKPT_DIR/gdpo/titok_gdpo
+Usage (see gdpo/scripts/train_gdpo.sh for the paper run):
+  torchrun --standalone --nproc_per_node=1 gdpo/gdpo_trainer.py       --config        gdpo/configs/titok_gdpo.yaml       --model_path    $CKPT_DIR/base/salmonn2p_7b_unav_v8       --model_base    $CKPT_DIR/base/salmonn2p_7b_unav_v8       --dataset_path  $DATA_DIR/gdpo/train.json       --reward_module reward_functions_rM_sep3 --tti_mode on       --output_dir    $CKPT_DIR/gdpo/titok_gdpo
 
 CLI arguments (CLI > YAML config > built-in defaults):
   --config                  YAML config; ${VAR} values are expanded from the environment.
@@ -88,8 +88,8 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-# video-SALMONN 2+ model
-sys.path.insert(0, os.path.join(PROJECT_ROOT, "video_SALMONN2_plus"))
+# video-SALMONN 2+ model code (titok/)
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "titok"))
 from qwenvl.model.modeling_qwen2_5_vl import video_SALMONN2_plus
 from qwenvl.data.dataset import LazySupervisedDataset, DataCollatorForSupervisedDataset
 

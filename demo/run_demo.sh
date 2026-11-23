@@ -1,8 +1,8 @@
 #!/bin/bash
 # ============================================================
 # Gradio demo for TiTok temporal grounding.
-#   bash gdpo/run_demo.sh
-#   DEMO_SHARE=1 bash gdpo/run_demo.sh      # also create a temporary public link
+#   bash demo/run_demo.sh
+#   DEMO_SHARE=1 bash demo/run_demo.sh      # also create a temporary public link
 # Defaults load the paper model: GDPO checkpoint-2000 on top of the merged SFT model.
 # ============================================================
 set -eo pipefail
@@ -15,4 +15,4 @@ export DEMO_TTI_MODE="${DEMO_TTI_MODE:-on}"
 export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-0}"
 export PYTHONUNBUFFERED=1
 
-python gdpo/demo_app.py
+python demo/app.py

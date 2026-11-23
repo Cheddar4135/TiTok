@@ -34,7 +34,7 @@ def main():
 
     print(f"[3/4] Loading model and resizing embeddings")
     import sys
-    sys.path.insert(0, os.path.join(os.environ["BASE_DIR"], "video_SALMONN2_plus"))
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "titok"))
     from qwenvl.model.modeling_qwen2_5_vl import video_SALMONN2_plus
 
     model = video_SALMONN2_plus.from_pretrained(

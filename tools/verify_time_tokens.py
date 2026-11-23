@@ -45,7 +45,7 @@ def main():
 
     if not all_ok:
         print("\n[ERROR] Some tokens do not encode to a single id.")
-        print("        Run add_time_tokens_salmonn2plus.py first.")
+        print("        Run tools/add_time_tokens.py first.")
         sys.exit(1)
 
     print(f"\n[3/4] Check sec_to_time_token_str output")

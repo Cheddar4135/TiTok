@@ -1,6 +1,6 @@
 # ============================================================
 # TiTok GDPO stage (paper setting).
-#   Launcher: gdpo/run_rMsep3_uncha_noscaling_1gpu.sh
+#   Launcher: gdpo/scripts/train_gdpo.sh
 #   ${VAR} values are expanded from the environment (set by scripts/env.sh);
 #   command-line flags passed by the launcher take precedence over this file.
 #   Effective batch = grad_accum (4) x GPUs (1) = 4  ->  max_steps 5179 = 1 epoch.
